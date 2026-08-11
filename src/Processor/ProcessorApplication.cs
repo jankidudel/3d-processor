@@ -7,13 +7,14 @@ public class ProcessorApplication
 {
     public int Run(string[] args)
     {
-        if (args.Length == 0)
+        var jsonOutput = args.Contains("--json", StringComparer.OrdinalIgnoreCase);
+        var filePath = args.FirstOrDefault(arg => !arg.StartsWith("--", StringComparison.Ordinal));
+
+        if (filePath is null)
         {
-            Console.WriteLine("Usage: <file.stl>");
+            Console.WriteLine("Usage: <file.stl> [--json]");
             return 1;
         }
-
-        var filePath = args[0];
 
         var reader = new BinaryStlReader();
         var mesh = reader.Read(filePath);
@@ -21,17 +22,10 @@ public class ProcessorApplication
         var validator = new StlValidator();
         var validationResult = validator.Validate(mesh);
 
-        Console.WriteLine($"Triangles: {mesh.Triangles.Count}");
-        Console.WriteLine($"Validation: {(validationResult.IsValid ? "OK" : "FAIL")}");
-
-        if (!validationResult.IsValid)
-        {
-            Console.WriteLine("Errors:");
-            foreach (var err in validationResult.Errors)
-            {
-                Console.WriteLine($"- {err}");
-            }
-        }
+        var report = jsonOutput
+            ? ValidationReportFormatter.FormatJson(validationResult)
+            : ValidationReportFormatter.FormatText(validationResult);
+        Console.WriteLine(report);
 
         return validationResult.IsValid ? 0 : 2;
 

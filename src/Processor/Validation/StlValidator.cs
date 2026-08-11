@@ -8,13 +8,15 @@ public class StlValidator
 
     public ValidationResult Validate(Mesh mesh)
     {
-        var errors = new List<string>();
+        var issues = new List<ValidationIssue>();
         var triangleIndices = new Dictionary<TriangleKey, int>();
         var edgeMap = new Dictionary<EdgeKey, List<EdgeUse>>();
 
         if (mesh.Triangles.Count == 0)
         {
-            errors.Add("Mesh contains no triangles.");
+            issues.Add(new ValidationIssue(
+                ValidationIssueCodes.EmptyMesh,
+                "Mesh contains no triangles."));
         }
 
         for (var i = 0; i < mesh.Triangles.Count; i++)
@@ -23,20 +25,26 @@ public class StlValidator
 
             if (!HasValidCoordinates(triangle))
             {
-                errors.Add($"Triangle {i} contains invalid coordinates.");
+                issues.Add(new ValidationIssue(
+                    ValidationIssueCodes.InvalidCoordinates,
+                    $"Triangle {i} contains invalid coordinates."));
                 continue;
             }
 
             if (IsDegenerate(triangle))
             {
-                errors.Add($"Triangle {i} is degenerate.");
+                issues.Add(new ValidationIssue(
+                    ValidationIssueCodes.DegenerateTriangle,
+                    $"Triangle {i} is degenerate."));
                 continue;
             }
 
             var triangleKey = TriangleKey.Create(triangle);
             if (triangleIndices.TryGetValue(triangleKey, out var originalIndex))
             {
-                errors.Add($"Triangle {i} duplicates triangle {originalIndex}.");
+                issues.Add(new ValidationIssue(
+                    ValidationIssueCodes.DuplicateTriangle,
+                    $"Triangle {i} duplicates triangle {originalIndex}."));
             }
             else
             {
@@ -48,11 +56,12 @@ public class StlValidator
             AddEdge(edgeMap, triangle.C, triangle.A, i);
         }
 
-        ValidateEdges(edgeMap, errors);
+        ValidateEdges(edgeMap, issues);
 
         return new ValidationResult
         {
-            Errors = errors
+            TriangleCount = mesh.Triangles.Count,
+            Issues = issues
         };
     }
 
@@ -116,26 +125,29 @@ public class StlValidator
 
     private static void ValidateEdges(
         Dictionary<EdgeKey, List<EdgeUse>> edgeMap,
-        List<string> errors)
+        List<ValidationIssue> issues)
     {
         foreach (var (edge, uses) in edgeMap)
         {
             if (uses.Count == 1)
             {
-                errors.Add(
-                    $"Open edge {FormatEdge(edge)} is used only by triangle {uses[0].TriangleIndex}.");
+                issues.Add(new ValidationIssue(
+                    ValidationIssueCodes.OpenEdge,
+                    $"Open edge {FormatEdge(edge)} is used only by triangle {uses[0].TriangleIndex}."));
             }
             else if (uses.Count > 2)
             {
                 var triangleList = string.Join(", ", uses.Select(use => use.TriangleIndex));
-                errors.Add(
-                    $"Non-manifold edge {FormatEdge(edge)} is used by {uses.Count} triangles: {triangleList}.");
+                issues.Add(new ValidationIssue(
+                    ValidationIssueCodes.NonManifoldEdge,
+                    $"Non-manifold edge {FormatEdge(edge)} is used by {uses.Count} triangles: {triangleList}."));
             }
             else if (uses[0].IsCanonicalDirection == uses[1].IsCanonicalDirection)
             {
-                errors.Add(
+                issues.Add(new ValidationIssue(
+                    ValidationIssueCodes.InconsistentOrientation,
                     $"Triangles {uses[0].TriangleIndex} and {uses[1].TriangleIndex} have inconsistent " +
-                    $"orientation along edge {FormatEdge(edge)}.");
+                    $"orientation along edge {FormatEdge(edge)}."));
             }
         }
     }

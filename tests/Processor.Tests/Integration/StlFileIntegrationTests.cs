@@ -22,10 +22,40 @@ public class StlFileIntegrationTests
         Assert.True(
             validationResult.IsValid,
             $"Expected {fileName} to be valid, but validation reported: " +
-            string.Join(" | ", validationResult.Errors.Take(10)));
+            string.Join(" | ", validationResult.Issues.Take(10).Select(issue => issue.Message)));
+    }
+
+    [Theory]
+    [Trait("Category", "Integration")]
+    [InlineData("degenerate", "rotor-degenerate.stl", 2356, ValidationIssueCodes.DegenerateTriangle, 1)]
+    [InlineData("duplicate-triangles", "rotor-duplicate-triangle.stl", 2356, ValidationIssueCodes.DuplicateTriangle, 1)]
+    [InlineData("inconsistent-orientation", "rotor-inconsistent-orientation.stl", 2356, ValidationIssueCodes.InconsistentOrientation, 3)]
+    [InlineData("invalid-coordinates", "rotor-invalid-coordinate.stl", 2356, ValidationIssueCodes.InvalidCoordinates, 1)]
+    [InlineData("open-edges", "rotor-open-edges.stl", 2355, ValidationIssueCodes.OpenEdge, 3)]
+    [InlineData("non-manifold", "rotor-non-manifold.stl", 2357, ValidationIssueCodes.NonManifoldEdge, 3)]
+    public void BinaryStl_ReadAndValidate_DetectsExpectedIssue(
+        string directoryName,
+        string fileName,
+        int expectedTriangleCount,
+        string expectedIssueCode,
+        int expectedIssueCount)
+    {
+        var filePath = GetFixturePath(directoryName, fileName);
+
+        var mesh = new BinaryStlReader().Read(filePath);
+        var validationResult = new StlValidator().Validate(mesh);
+
+        Assert.Equal(expectedTriangleCount, mesh.Triangles.Count);
+        Assert.False(validationResult.IsValid);
+        Assert.Equal(expectedIssueCount, validationResult.CountIssues(expectedIssueCode));
     }
 
     private static string GetFixturePath(string fileName)
+    {
+        return GetFixturePath("valid", fileName);
+    }
+
+    private static string GetFixturePath(string directoryName, string fileName)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
 
@@ -36,7 +66,7 @@ public class StlFileIntegrationTests
 
         Assert.NotNull(directory);
 
-        var filePath = Path.Combine(directory.FullName, "data", "valid", fileName);
+        var filePath = Path.Combine(directory.FullName, "data", directoryName, fileName);
         Assert.True(File.Exists(filePath), $"Integration fixture was not found: {filePath}");
         return filePath;
     }

@@ -25,7 +25,18 @@ dotnet run --project src/Processor/Processor.csproj -- data/valid/releaser.stl
 ```
 
 This prints `Triangles: 1246`. Running without a file prints
-`Usage: <file.stl>` and exits with status code 1.
+`Usage: <file.stl> [--json]` and exits with status code 1.
+
+By default, the application prints a human-readable STL quality report with the
+triangle count, totals for each validation issue category, and an overall
+validation status. To receive the same summary as structured JSON, add `--json`:
+
+```sh
+dotnet run --project src/Processor/Processor.csproj -- data/valid/releaser.stl --json
+```
+
+The process exits with status code 0 for a valid mesh and 2 when validation
+issues are found.
 
 AWS SAM is not required to run the processor locally. SAM would become useful
 if the application were later packaged as an AWS Lambda handler with a SAM

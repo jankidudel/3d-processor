@@ -13,7 +13,10 @@ public class StlValidatorTests
         var result = Validate();
 
         Assert.False(result.IsValid);
-        Assert.Equal(["Mesh contains no triangles."], result.Errors);
+        var issue = Assert.Single(result.Issues);
+        Assert.Equal(ValidationIssueCodes.EmptyMesh, issue.Code);
+        Assert.Equal("Mesh contains no triangles.", issue.Message);
+        Assert.Equal(0, result.TriangleCount);
     }
 
     [Fact]
@@ -22,7 +25,8 @@ public class StlValidatorTests
         var result = Validate(CreateTetrahedron());
 
         Assert.True(result.IsValid);
-        Assert.Empty(result.Errors);
+        Assert.Empty(result.Issues);
+        Assert.Equal(4, result.TriangleCount);
     }
 
     [Theory]
@@ -38,7 +42,9 @@ public class StlValidatorTests
 
         var result = Validate(triangle);
 
-        Assert.Contains("Triangle 0 contains invalid coordinates.", result.Errors);
+        Assert.Contains(result.Issues, issue =>
+            issue.Code == ValidationIssueCodes.InvalidCoordinates &&
+            issue.Message == "Triangle 0 contains invalid coordinates.");
     }
 
     [Fact]
@@ -49,7 +55,7 @@ public class StlValidatorTests
 
         var result = Validate(triangle);
 
-        Assert.Equal(["Triangle 0 is degenerate."], result.Errors);
+        AssertIssue(result, ValidationIssueCodes.DegenerateTriangle, "Triangle 0 is degenerate.");
     }
 
     [Fact]
@@ -62,7 +68,7 @@ public class StlValidatorTests
 
         var result = Validate(triangle);
 
-        Assert.Equal(["Triangle 0 is degenerate."], result.Errors);
+        AssertIssue(result, ValidationIssueCodes.DegenerateTriangle, "Triangle 0 is degenerate.");
     }
 
     [Fact]
@@ -75,7 +81,7 @@ public class StlValidatorTests
 
         var result = Validate(triangle);
 
-        Assert.Equal(["Triangle 0 is degenerate."], result.Errors);
+        AssertIssue(result, ValidationIssueCodes.DegenerateTriangle, "Triangle 0 is degenerate.");
     }
 
     [Fact]
@@ -105,7 +111,9 @@ public class StlValidatorTests
             CreateTriangle(a, b, c),
             CreateTriangle(c, a, b));
 
-        Assert.Contains("Triangle 1 duplicates triangle 0.", result.Errors);
+        Assert.Contains(result.Issues, issue =>
+            issue.Code == ValidationIssueCodes.DuplicateTriangle &&
+            issue.Message == "Triangle 1 duplicates triangle 0.");
     }
 
     [Fact]
@@ -116,7 +124,7 @@ public class StlValidatorTests
             new Vector3(1, 0, 0),
             new Vector3(0, 1, 0)));
 
-        Assert.Equal(3, result.Errors.Count(error => error.StartsWith("Open edge")));
+        Assert.Equal(3, result.CountIssues(ValidationIssueCodes.OpenEdge));
     }
 
     [Fact]
@@ -130,9 +138,9 @@ public class StlValidatorTests
             CreateTriangle(b, a, new Vector3(0, 0, 1)),
             CreateTriangle(a, b, new Vector3(0, -1, 0)));
 
-        Assert.Contains(result.Errors, error =>
-            error.StartsWith("Non-manifold edge") &&
-            error.Contains("is used by 3 triangles: 0, 1, 2."));
+        Assert.Contains(result.Issues, issue =>
+            issue.Code == ValidationIssueCodes.NonManifoldEdge &&
+            issue.Message.Contains("is used by 3 triangles: 0, 1, 2."));
     }
 
     [Fact]
@@ -145,8 +153,9 @@ public class StlValidatorTests
             CreateTriangle(a, b, new Vector3(0, 1, 0)),
             CreateTriangle(a, b, new Vector3(0, 0, 1)));
 
-        Assert.Contains(result.Errors, error =>
-            error.StartsWith("Triangles 0 and 1 have inconsistent orientation"));
+        Assert.Contains(result.Issues, issue =>
+            issue.Code == ValidationIssueCodes.InconsistentOrientation &&
+            issue.Message.StartsWith("Triangles 0 and 1 have inconsistent orientation"));
     }
 
     [Fact]
@@ -159,7 +168,8 @@ public class StlValidatorTests
             CreateTriangle(a, b, new Vector3(0, 1, 0)),
             CreateTriangle(b, a, new Vector3(0, 0, 1)));
 
-        Assert.DoesNotContain(result.Errors, error => error.Contains("inconsistent orientation"));
+        Assert.DoesNotContain(result.Issues, issue =>
+            issue.Code == ValidationIssueCodes.InconsistentOrientation);
     }
 
     private static ValidationResult Validate(params Triangle[] triangles)
@@ -167,6 +177,13 @@ public class StlValidatorTests
         var mesh = new Mesh();
         mesh.Triangles.AddRange(triangles);
         return new StlValidator().Validate(mesh);
+    }
+
+    private static void AssertIssue(ValidationResult result, string code, string message)
+    {
+        var issue = Assert.Single(result.Issues);
+        Assert.Equal(code, issue.Code);
+        Assert.Equal(message, issue.Message);
     }
 
     private static Triangle[] CreateTetrahedron()
