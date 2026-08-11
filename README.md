@@ -16,6 +16,24 @@ The solution file is the test entry point; production `Program.Main` does not ne
 dotnet test 3d-processor.slnx
 ```
 
+### Integration tests
+
+The integration tests read the checked-in binary STL fixtures under `data/valid/`, verify their known triangle counts, and validate the resulting meshes with `StlValidator`.
+
+Run only the real-file integration tests:
+
+```sh
+dotnet test 3d-processor.slnx --filter "Category=Integration"
+```
+
+Run only the synthetic unit tests:
+
+```sh
+dotnet test 3d-processor.slnx --filter "Category!=Integration"
+```
+
+The unfiltered `dotnet test` command runs both groups.
+
 ## Generate code coverage
 
 ```sh
@@ -34,4 +52,4 @@ Activate the repository's versioned pre-commit hook once after cloning:
 git config core.hooksPath .githooks
 ```
 
-The hook runs `dotnet test 3d-processor.slnx --no-restore`. Run `dotnet restore 3d-processor.slnx` at least once after cloning or after package changes.
+The hook runs `dotnet test 3d-processor.slnx --no-restore`, including the integration tests. The current fixtures are small enough that running both groups before each commit remains practical. Run `dotnet restore 3d-processor.slnx` at least once after cloning or after package changes.
