@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+
+dotnet test 3d-processor.slnx --no-restore --nologo

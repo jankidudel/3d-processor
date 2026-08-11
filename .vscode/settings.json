@@ -1,4 +1,5 @@
 {
+  "editor.renderWhitespace": "all",
   "[csharp]": {
     "editor.defaultFormatter": "ms-dotnettools.csharp",
     "editor.detectIndentation": true,
