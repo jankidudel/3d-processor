@@ -10,6 +10,8 @@ mutation:
 - `invalid-coordinates/`: replaces one vertex coordinate with `NaN`.
 - `open-edges/`: removes one triangle from the closed mesh.
 - `non-manifold/`: appends a copy of one triangle, giving its edges three uses.
+- `corrupt/`: truncates the final triangle while retaining the original header
+  count, exercising binary STL processing failures.
 
 The `self-intersection/` directory is reserved for fixtures once a
 self-intersection validation rule is implemented. The current validator does

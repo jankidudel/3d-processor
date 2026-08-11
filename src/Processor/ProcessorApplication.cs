@@ -1,3 +1,4 @@
+using Processor.Reporting;
 using Processor.Stl;
 using Processor.Validation;
 
@@ -7,27 +8,42 @@ public class ProcessorApplication
 {
     public int Run(string[] args)
     {
+        return Run(args, Console.Out, Console.Error);
+    }
+
+    public int Run(string[] args, TextWriter outputWriter, TextWriter errorWriter)
+    {
         var jsonOutput = args.Contains("--json", StringComparer.OrdinalIgnoreCase);
         var filePath = args.FirstOrDefault(arg => !arg.StartsWith("--", StringComparison.Ordinal));
 
         if (filePath is null)
         {
-            Console.WriteLine("Usage: <file.stl> [--json]");
+            errorWriter.WriteLine("Usage: <file.stl> [--json]");
             return 1;
         }
 
-        var reader = new BinaryStlReader();
-        var mesh = reader.Read(filePath);
+        try
+        {
+            var report = Process(filePath);
+            var output = jsonOutput
+                ? StlQualityReportFormatter.FormatJson(report)
+                : StlQualityReportFormatter.FormatText(report);
+            outputWriter.WriteLine(output);
 
-        var validator = new StlValidator();
-        var validationResult = validator.Validate(mesh);
+            return report.Validation.IsValid ? 0 : 2;
+        }
+        catch (Exception exception)
+        {
+            errorWriter.WriteLine($"Processing failed: {exception.Message}");
+            return 1;
+        }
+    }
 
-        var report = jsonOutput
-            ? ValidationReportFormatter.FormatJson(validationResult)
-            : ValidationReportFormatter.FormatText(validationResult);
-        Console.WriteLine(report);
+    public StlQualityReport Process(string filePath)
+    {
+        var mesh = new BinaryStlReader().Read(filePath);
+        var validation = new StlValidator().Validate(mesh);
 
-        return validationResult.IsValid ? 0 : 2;
-
+        return new StlQualityReportBuilder().Build(filePath, mesh, validation);
     }
 }

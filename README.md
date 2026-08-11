@@ -15,7 +15,13 @@ The `--` separates `dotnet run` options from arguments passed to the
 application. For the checked-in `rotor.stl` fixture, the output is:
 
 ```text
-Triangles: 2356
+STL Quality Report
+
+File:                     rotor.stl
+File size:                117884 bytes
+Triangles:                2356
+...
+Validation: OK
 ```
 
 Another checked-in fixture can be used in the same way:
@@ -24,7 +30,7 @@ Another checked-in fixture can be used in the same way:
 dotnet run --project src/Processor/Processor.csproj -- data/valid/releaser.stl
 ```
 
-This prints `Triangles: 1246`. Running without a file prints
+This reports `1246` triangles. Running without a file prints
 `Usage: <file.stl> [--json]` and exits with status code 1.
 
 By default, the application prints a human-readable STL quality report with the
@@ -36,7 +42,15 @@ dotnet run --project src/Processor/Processor.csproj -- data/valid/releaser.stl -
 ```
 
 The process exits with status code 0 for a valid mesh and 2 when validation
-issues are found.
+issues are found. Processing failures, such as missing or truncated files, write
+to standard error and exit with status code 1. In `--json` mode, standard output
+therefore contains either one complete JSON report or nothing, never diagnostic
+text mixed with JSON.
+
+The versioned JSON report includes the source file name and size, triangle
+count, axis-aligned bounding box, width/height/depth, surface area, volume, and
+structured validation results. This report is the processor's output model and
+can be consumed directly by API or UI layers.
 
 AWS SAM is not required to run the processor locally. SAM would become useful
 if the application were later packaged as an AWS Lambda handler with a SAM
@@ -53,7 +67,8 @@ dotnet test 3d-processor.slnx
 
 ### Integration tests
 
-The integration tests read the checked-in binary STL fixtures under `data/valid/`, verify their known triangle counts, and validate the resulting meshes with `StlValidator`.
+The integration tests read the checked-in binary STL fixtures under `data/`,
+verify known metadata and validation results, and exercise corrupt-file handling.
 
 Run only the real-file integration tests:
 

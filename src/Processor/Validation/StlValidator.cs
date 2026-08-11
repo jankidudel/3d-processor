@@ -60,7 +60,6 @@ public class StlValidator
 
         return new ValidationResult
         {
-            TriangleCount = mesh.Triangles.Count,
             Issues = issues
         };
     }

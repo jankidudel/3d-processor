@@ -2,8 +2,6 @@ namespace Processor.Validation;
 
 public class ValidationResult
 {
-    public int TriangleCount { get; init; }
-
     public List<ValidationIssue> Issues { get; init; } = [];
 
     public bool IsValid => Issues.Count == 0;

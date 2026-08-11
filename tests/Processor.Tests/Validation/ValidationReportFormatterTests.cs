@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Processor.Reporting;
 using Processor.Validation;
 
 namespace Processor.Tests.Validation;
@@ -8,9 +9,9 @@ public class ValidationReportFormatterTests
     [Fact]
     public void FormatText_ValidResult_ContainsQualityCountsAndOkStatus()
     {
-        var result = new ValidationResult { TriangleCount = 1246 };
+        var reportModel = CreateReport(1246, new ValidationResult());
 
-        var report = ValidationReportFormatter.FormatText(result);
+        var report = StlQualityReportFormatter.FormatText(reportModel);
 
         Assert.Contains("STL Quality Report", report);
         Assert.Contains("Triangles:                1246", report);
@@ -21,9 +22,8 @@ public class ValidationReportFormatterTests
     [Fact]
     public void FormatJson_ResultWithIssues_ContainsStructuredCounts()
     {
-        var result = new ValidationResult
+        var validation = new ValidationResult
         {
-            TriangleCount = 12,
             Issues =
             [
                 new ValidationIssue(ValidationIssueCodes.OpenEdge, "First open edge."),
@@ -32,14 +32,25 @@ public class ValidationReportFormatterTests
             ]
         };
 
-        var report = ValidationReportFormatter.FormatJson(result);
+        var report = StlQualityReportFormatter.FormatJson(CreateReport(12, validation));
         using var document = JsonDocument.Parse(report);
         var root = document.RootElement;
 
-        Assert.False(root.GetProperty("valid").GetBoolean());
+        Assert.Equal("1.0", root.GetProperty("reportVersion").GetString());
         Assert.Equal(12, root.GetProperty("triangleCount").GetInt32());
-        Assert.Equal(3, root.GetProperty("issues").GetProperty("openEdges").GetInt32());
-        Assert.Equal(1, root.GetProperty("issues").GetProperty("duplicateTriangles").GetInt32());
-        Assert.Equal(0, root.GetProperty("issues").GetProperty("invalidCoordinates").GetInt32());
+        var validationJson = root.GetProperty("validation");
+        Assert.False(validationJson.GetProperty("isValid").GetBoolean());
+        Assert.Equal(2, validationJson.GetProperty("issues")[1].GetProperty("count").GetInt32());
+    }
+
+    private static StlQualityReport CreateReport(int triangleCount, ValidationResult validation)
+    {
+        return new StlQualityReport
+        {
+            FileName = "model.stl",
+            FileSizeBytes = 100,
+            TriangleCount = triangleCount,
+            Validation = validation
+        };
     }
 }

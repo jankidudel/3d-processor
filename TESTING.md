@@ -52,3 +52,22 @@ dotnet test 3d-processor.slnx --nologo --no-restore
 
 All tests are deterministic, require no network access while running, and can be
 run directly from a terminal without starting the application.
+
+## Run the performance smoke test
+
+The performance smoke test generates temporary approximately 1 MB, 20 MB, and
+100 MB closed binary STL files. It reports processing time, working-set growth,
+peak (or current, where peak is unavailable) working set, managed heap size,
+live managed memory, and triangle count. It is opt-in so normal test runs remain
+fast:
+
+```sh
+RUN_PERFORMANCE_SMOKE_TESTS=1 dotnet test 3d-processor.slnx \
+  --nologo \
+  --filter "Category=Performance" \
+  --logger "console;verbosity=detailed"
+```
+
+The generated files are deleted after the test and are not committed to the
+repository. The smoke test is intended to expose major regressions; it does not
+replace repeatable benchmarking.

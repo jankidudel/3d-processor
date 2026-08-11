@@ -16,7 +16,6 @@ public class StlValidatorTests
         var issue = Assert.Single(result.Issues);
         Assert.Equal(ValidationIssueCodes.EmptyMesh, issue.Code);
         Assert.Equal("Mesh contains no triangles.", issue.Message);
-        Assert.Equal(0, result.TriangleCount);
     }
 
     [Fact]
@@ -26,7 +25,6 @@ public class StlValidatorTests
 
         Assert.True(result.IsValid);
         Assert.Empty(result.Issues);
-        Assert.Equal(4, result.TriangleCount);
     }
 
     [Theory]
