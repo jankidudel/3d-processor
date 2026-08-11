@@ -4,9 +4,33 @@
 
 ## Run the application
 
+The processor is currently a .NET console application. Run it from the
+repository root and pass the path to an STL file after `--`:
+
 ```sh
 dotnet run --project src/Processor/Processor.csproj -- data/valid/rotor.stl
 ```
+
+The `--` separates `dotnet run` options from arguments passed to the
+application. For the checked-in `rotor.stl` fixture, the output is:
+
+```text
+Triangles: 2356
+```
+
+Another checked-in fixture can be used in the same way:
+
+```sh
+dotnet run --project src/Processor/Processor.csproj -- data/valid/releaser.stl
+```
+
+This prints `Triangles: 1246`. Running without a file prints
+`Usage: <file.stl>` and exits with status code 1.
+
+AWS SAM is not required to run the processor locally. SAM would become useful
+if the application were later packaged as an AWS Lambda handler with a SAM
+template. Until then, the console entry point provides the simplest local
+execution harness.
 
 ## Run the tests
 

@@ -7,13 +7,6 @@ public class ProcessorApplication
 {
     public int Run(string[] args)
     {
-        // var reader = new BinaryStlReader();
-        // var validator = new StlValidator();
-
-        // // we'll add processing here
-
-        // return 0;
-
         if (args.Length == 0)
         {
             Console.WriteLine("Usage: <file.stl>");
@@ -25,9 +18,22 @@ public class ProcessorApplication
         var reader = new BinaryStlReader();
         var mesh = reader.Read(filePath);
 
-        Console.WriteLine($"Triangles: {mesh.Triangles.Count}");
+        var validator = new StlValidator();
+        var validationResult = validator.Validate(mesh);
 
-        return 0;
+        Console.WriteLine($"Triangles: {mesh.Triangles.Count}");
+        Console.WriteLine($"Validation: {(validationResult.IsValid ? "OK" : "FAIL")}");
+
+        if (!validationResult.IsValid)
+        {
+            Console.WriteLine("Errors:");
+            foreach (var err in validationResult.Errors)
+            {
+                Console.WriteLine($"- {err}");
+            }
+        }
+
+        return validationResult.IsValid ? 0 : 2;
 
     }
 }
