@@ -2,7 +2,7 @@ using Processor.Models;
 
 namespace Processor.Stl;
 
-public class BinaryStlReader
+public class BinaryStlReader : IStlReader
 {
     public Mesh Read(string filePath)
     {
