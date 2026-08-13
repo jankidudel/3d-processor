@@ -103,3 +103,15 @@ git config core.hooksPath .githooks
 ```
 
 The hook runs `dotnet test 3d-processor.slnx --no-restore`, including the integration tests. The current fixtures are small enough that running both groups before each commit remains practical. Run `dotnet restore 3d-processor.slnx` at least once after cloning or after package changes.
+
+## Package for AWS Lambda
+
+The processor repository owns compilation and packaging. Run:
+
+```sh
+./scripts/package-lambda.sh
+```
+
+The script tests the solution and publishes a Release artifact to
+`artifacts/lambda/`. The generated directory is ignored by Git and can be passed
+directly to `3d-infra`; CDK packages and uploads it during deployment.
