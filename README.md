@@ -1,6 +1,6 @@
 # 3d-processor
 
-3D processing libraries.
+3D processing engine with a command-line interface and an AWS Lambda SQS/S3 adapter.
 
 ## Run the application
 
@@ -115,3 +115,32 @@ The processor repository owns compilation and packaging. Run:
 The script tests the solution and publishes a Release artifact to
 `artifacts/lambda/`. The generated directory is ignored by Git and can be passed
 directly to `3d-infra`; CDK packages and uploads it during deployment.
+
+## AWS Lambda worker
+
+The Lambda handler is:
+
+```text
+Processor::Processor.Function::FunctionHandler
+```
+
+It receives SQS messages containing native S3 object-created events. For each
+`uploads/{jobId}/{filename}` object, it downloads the file to Lambda's temporary
+storage, runs the existing validation engine, and writes JSON to
+`reports/{jobId}/report.json`. The same report key is overwritten on duplicate
+delivery, making retries deterministic without introducing a database.
+
+The worker currently accepts `.stl` files. Unsupported formats fail the SQS record
+so normal retry and DLQ handling apply. It reports individual SQS failures using
+Lambda partial-batch responses.
+
+The infrastructure supplies these environment variables:
+
+```text
+STORAGE_BUCKET_NAME
+UPLOADS_PREFIX
+REPORTS_PREFIX
+```
+
+The CLI remains available and continues to use the same processing and validation
+engine as the Lambda adapter.

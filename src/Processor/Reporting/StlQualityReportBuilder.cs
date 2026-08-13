@@ -5,13 +5,17 @@ namespace Processor.Reporting;
 
 public sealed class StlQualityReportBuilder
 {
-    public StlQualityReport Build(string filePath, Mesh mesh, ValidationResult validation)
+    public StlQualityReport Build(
+        string filePath,
+        Mesh mesh,
+        ValidationResult validation,
+        string? sourceFileName = null)
     {
         var geometry = CalculateGeometry(mesh);
 
         return new StlQualityReport
         {
-            FileName = Path.GetFileName(filePath),
+            FileName = sourceFileName ?? Path.GetFileName(filePath),
             FileSizeBytes = new FileInfo(filePath).Length,
             TriangleCount = mesh.Triangles.Count,
             BoundingBox = geometry.BoundingBox,
