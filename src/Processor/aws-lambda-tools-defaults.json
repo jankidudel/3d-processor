@@ -1,0 +1,11 @@
+{
+  "Information": [
+    "Defaults for packaging the 3d-processor Lambda deployment artifact.",
+    "AWS resource deployment and environment configuration belong to 3d-infra."
+  ],
+  "configuration": "Release",
+  "framework": "net10.0",
+  "function-runtime": "dotnet10",
+  "function-architecture": "x86_64",
+  "function-handler": "Processor::Processor.Function::FunctionHandler"
+}

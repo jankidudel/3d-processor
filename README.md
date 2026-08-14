@@ -106,15 +106,37 @@ The hook runs `dotnet test 3d-processor.slnx --no-restore`, including the integr
 
 ## Package for AWS Lambda
 
-The processor repository owns compilation and packaging. Run:
+Install the official AWS Lambda packaging CLI once:
 
 ```sh
-./scripts/package-lambda.sh
+dotnet tool install -g Amazon.Lambda.Tools
 ```
 
-The script tests the solution and publishes a Release artifact to
-`artifacts/lambda/`. The generated directory is ignored by Git and can be passed
-directly to `3d-infra`; CDK packages and uploads it during deployment.
+If it is already installed, update it with:
+
+```sh
+dotnet tool update -g Amazon.Lambda.Tools
+```
+
+The tool is a developer prerequisite; it is not installed during every build.
+
+From the repository root, use:
+
+```sh
+make build    # Release build targeting net10.0
+make test     # run the complete solution test suite
+make package  # create artifacts/3d-processor.zip
+make clean    # remove .NET build output and artifacts/
+```
+
+`make package` uses `Amazon.Lambda.Tools` to compile and package only the published
+Lambda application and its runtime dependencies. It replaces any existing ZIP at
+`artifacts/3d-processor.zip`; it does not deploy anything and requires no AWS
+credentials. The generated artifact is ignored by Git and is consumed by the
+separate `3d-infra` repository as a CDK Lambda asset.
+
+`scripts/package-lambda.sh` remains as a compatibility wrapper and delegates to
+`make package`.
 
 ## AWS Lambda worker
 
