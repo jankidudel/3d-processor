@@ -83,6 +83,26 @@ public class ProcessorWorkerTests
     }
 
     [Fact]
+    public async Task ProcessAsync_FinalFailedAttempt_WritesFailureResult()
+    {
+        var storage = new FakeObjectStorage(GetFixturePath("corrupt", "rotor-truncated.stl"));
+        var worker = CreateWorker(storage);
+        var sqsEvent = CreateSqsEvent(
+            "message-1",
+            "storage-bucket",
+            "jobs/job-123/input.stl");
+        sqsEvent.Records[0].Attributes["ApproximateReceiveCount"] = "3";
+
+        var response = await worker.ProcessAsync(sqsEvent);
+
+        Assert.Single(response.BatchItemFailures);
+        var failure = Assert.Single(storage.Uploads);
+        Assert.Equal("jobs/job-123/failure.json", failure.ObjectKey);
+        using var json = JsonDocument.Parse(failure.Json);
+        Assert.Equal("processing_failed", json.RootElement.GetProperty("error").GetProperty("code").GetString());
+    }
+
+    [Fact]
     public async Task ProcessAsync_OversizedFile_ReturnsPartialBatchFailureWithoutDownloading()
     {
         var storage = new FakeObjectStorage(GetFixturePath("valid", "rotor.stl"));
@@ -130,6 +150,7 @@ public class ProcessorWorkerTests
         return new SQSEvent.SQSMessage
         {
             MessageId = messageId,
+            Attributes = new Dictionary<string, string>(),
             Body = JsonSerializer.Serialize(new
             {
                 Records = new[]

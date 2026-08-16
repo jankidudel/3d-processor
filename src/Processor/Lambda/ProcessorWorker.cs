@@ -33,6 +33,18 @@ internal sealed class ProcessorWorker(
             catch (Exception exception)
             {
                 log?.Invoke($"Processing SQS message {message.MessageId} failed: {exception}");
+                if (IsFinalAttempt(message))
+                {
+                    try
+                    {
+                        await WriteFailureAsync(message, cancellationToken);
+                    }
+                    catch (Exception failureException)
+                    {
+                        log?.Invoke(
+                            $"Writing failure result for SQS message {message.MessageId} failed: {failureException}");
+                    }
+                }
                 failures.Add(new SQSBatchResponse.BatchItemFailure
                 {
                     ItemIdentifier = message.MessageId
@@ -41,6 +53,62 @@ internal sealed class ProcessorWorker(
         }
 
         return new SQSBatchResponse(failures);
+    }
+
+    private async Task WriteFailureAsync(
+        SQSEvent.SQSMessage message,
+        CancellationToken cancellationToken)
+    {
+        var s3Event = JsonSerializer.Deserialize<S3EventMessage>(message.Body, JsonOptions);
+        var record = s3Event?.Records.FirstOrDefault();
+        if (record is null || !string.Equals(record.S3.Bucket.Name, bucketName, StringComparison.Ordinal))
+        {
+            return;
+        }
+        var objectKey = DecodeObjectKey(record.S3.Object.Key);
+        if (!TryGetJobId(objectKey, out var jobId))
+        {
+            return;
+        }
+        var failureJson = JsonSerializer.Serialize(new
+        {
+            reportVersion = "1.0",
+            error = new
+            {
+                code = "processing_failed",
+                message = "The STL file could not be processed."
+            }
+        });
+        await storage.UploadJsonAsync(
+            bucketName,
+            $"{jobsPrefix}{jobId}/failure.json",
+            failureJson,
+            cancellationToken);
+    }
+
+    private bool TryGetJobId(string objectKey, out string jobId)
+    {
+        jobId = "";
+        if (!objectKey.StartsWith(jobsPrefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+        var relativeKey = objectKey[jobsPrefix.Length..];
+        var separatorIndex = relativeKey.IndexOf('/');
+        if (separatorIndex <= 0 || relativeKey[(separatorIndex + 1)..] != "input.stl")
+        {
+            return false;
+        }
+        jobId = relativeKey[..separatorIndex];
+        return jobId is not "." and not ".." && !jobId.Contains('/');
+    }
+
+    private static bool IsFinalAttempt(SQSEvent.SQSMessage message)
+    {
+        return message.Attributes is not null &&
+            message.Attributes.TryGetValue("ApproximateReceiveCount", out var rawCount) &&
+            int.TryParse(rawCount, out var count) &&
+            count >= 3;
     }
 
     private async Task ProcessMessageAsync(

@@ -156,6 +156,10 @@ The worker currently accepts `.stl` files. Unsupported formats fail the SQS reco
 so normal retry and DLQ handling apply. It reports individual SQS failures using
 Lambda partial-batch responses.
 
+When the third receive attempt fails, the worker also writes a safe terminal result
+to `jobs/{jobId}/failure.json` before the message moves to the DLQ. The API uses
+that artifact to return `status: "failed"` without a database.
+
 The infrastructure supplies these environment variables:
 
 ```text
