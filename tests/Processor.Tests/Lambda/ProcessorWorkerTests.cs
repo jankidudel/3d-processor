@@ -120,6 +120,27 @@ public class ProcessorWorkerTests
         Assert.Empty(storage.Uploads);
     }
 
+    [Fact]
+    public async Task ProcessAsync_ObjectReplacedWithOversizedFile_DoesNotDownloadCurrentObject()
+    {
+        var storage = new FakeObjectStorage(GetFixturePath("valid", "rotor.stl"))
+        {
+            ObjectSize = ProcessorWorker.MaxUploadSizeBytes + 1
+        };
+        var worker = CreateWorker(storage);
+        var sqsEvent = CreateSqsEvent(
+            "message-1",
+            "storage-bucket",
+            "jobs/job-123/input.stl",
+            117884);
+
+        var response = await worker.ProcessAsync(sqsEvent);
+
+        Assert.Single(response.BatchItemFailures);
+        Assert.Equal(0, storage.DownloadCount);
+        Assert.Empty(storage.Uploads);
+    }
+
     private static ProcessorWorker CreateWorker(IObjectStorage storage)
     {
         return new ProcessorWorker(
@@ -185,6 +206,15 @@ public class ProcessorWorkerTests
     {
         public List<Upload> Uploads { get; } = [];
         public int DownloadCount { get; private set; }
+        public long ObjectSize { get; init; } = new FileInfo(sourceFilePath).Length;
+
+        public Task<long> GetSizeAsync(
+            string bucketName,
+            string objectKey,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(ObjectSize);
+        }
 
         public async Task DownloadAsync(
             string bucketName,

@@ -2,6 +2,11 @@ namespace Processor.Lambda;
 
 internal interface IObjectStorage
 {
+    Task<long> GetSizeAsync(
+        string bucketName,
+        string objectKey,
+        CancellationToken cancellationToken = default);
+
     Task DownloadAsync(
         string bucketName,
         string objectKey,

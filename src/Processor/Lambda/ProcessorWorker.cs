@@ -172,6 +172,16 @@ internal sealed class ProcessorWorker(
                 $"Object '{objectKey}' exceeds the 25 MiB processing limit.");
         }
 
+        var currentObjectSize = await storage.GetSizeAsync(
+            bucketName,
+            objectKey,
+            cancellationToken);
+        if (currentObjectSize > MaxUploadSizeBytes)
+        {
+            throw new InvalidDataException(
+                $"Object '{objectKey}' exceeds the 25 MiB processing limit.");
+        }
+
         var temporaryPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.stl");
         try
         {

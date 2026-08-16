@@ -6,6 +6,17 @@ namespace Processor.Lambda;
 
 internal sealed class S3ObjectStorage(IAmazonS3 client) : IObjectStorage
 {
+    public async Task<long> GetSizeAsync(
+        string bucketName,
+        string objectKey,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await client.GetObjectMetadataAsync(
+            new GetObjectMetadataRequest { BucketName = bucketName, Key = objectKey },
+            cancellationToken);
+        return response.ContentLength;
+    }
+
     public async Task DownloadAsync(
         string bucketName,
         string objectKey,

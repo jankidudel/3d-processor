@@ -156,6 +156,10 @@ The worker currently accepts `.stl` files. Unsupported formats fail the SQS reco
 so normal retry and DLQ handling apply. It reports individual SQS failures using
 Lambda partial-batch responses.
 
+Uploads larger than 25 MiB are rejected using both the AWS-generated S3 event size
+and a fresh S3 metadata check immediately before download. The second check prevents
+an oversized object replacement from bypassing the event-size validation.
+
 When the third receive attempt fails, the worker also writes a safe terminal result
 to `jobs/{jobId}/failure.json` before the message moves to the DLQ. The API uses
 that artifact to return `status: "failed"` without a database.
