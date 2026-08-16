@@ -147,9 +147,9 @@ Processor::Processor.Function::FunctionHandler
 ```
 
 It receives SQS messages containing native S3 object-created events. For each
-`uploads/{jobId}/{filename}` object, it downloads the file to Lambda's temporary
+`jobs/{jobId}/input.stl` object, it downloads the file to Lambda's temporary
 storage, runs the existing validation engine, and writes JSON to
-`reports/{jobId}/report.json`. The same report key is overwritten on duplicate
+`jobs/{jobId}/report.json`. The same report key is overwritten on duplicate
 delivery, making retries deterministic without introducing a database.
 
 The worker currently accepts `.stl` files. Unsupported formats fail the SQS record
@@ -160,8 +160,7 @@ The infrastructure supplies these environment variables:
 
 ```text
 STORAGE_BUCKET_NAME
-UPLOADS_PREFIX
-REPORTS_PREFIX
+JOBS_PREFIX
 ```
 
 The CLI remains available and continues to use the same processing and validation

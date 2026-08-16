@@ -33,8 +33,7 @@ public sealed class Function
             new S3ObjectStorage(new AmazonS3Client()),
             new ProcessorApplication(),
             RequiredEnvironmentVariable("STORAGE_BUCKET_NAME"),
-            RequiredEnvironmentVariable("UPLOADS_PREFIX"),
-            RequiredEnvironmentVariable("REPORTS_PREFIX"));
+            RequiredEnvironmentVariable("JOBS_PREFIX"));
     }
 
     private static string RequiredEnvironmentVariable(string name)

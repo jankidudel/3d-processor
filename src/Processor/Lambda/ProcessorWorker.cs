@@ -8,8 +8,7 @@ internal sealed class ProcessorWorker(
     IObjectStorage storage,
     ProcessorApplication processor,
     string bucketName,
-    string uploadsPrefix,
-    string reportsPrefix)
+    string jobsPrefix)
 {
     internal const long MaxUploadSizeBytes = 25L * 1024 * 1024;
 
@@ -76,22 +75,22 @@ internal sealed class ProcessorWorker(
             throw new InvalidDataException($"Unexpected S3 bucket '{eventBucket}'.");
         }
 
-        var relativeKey = objectKey.StartsWith(uploadsPrefix, StringComparison.Ordinal)
-            ? objectKey[uploadsPrefix.Length..]
-            : throw new InvalidDataException($"Object key '{objectKey}' is outside '{uploadsPrefix}'.");
+        var relativeKey = objectKey.StartsWith(jobsPrefix, StringComparison.Ordinal)
+            ? objectKey[jobsPrefix.Length..]
+            : throw new InvalidDataException($"Object key '{objectKey}' is outside '{jobsPrefix}'.");
         var separatorIndex = relativeKey.IndexOf('/');
-        if (separatorIndex <= 0 || separatorIndex == relativeKey.Length - 1)
+        if (separatorIndex <= 0 || relativeKey[(separatorIndex + 1)..] != "input.stl")
         {
             throw new InvalidDataException(
-                $"Object key '{objectKey}' must match {uploadsPrefix}{{jobId}}/{{filename}}.");
+                $"Object key '{objectKey}' must match {jobsPrefix}{{jobId}}/input.stl.");
         }
 
         var jobId = relativeKey[..separatorIndex];
         var fileName = relativeKey[(separatorIndex + 1)..];
-        if (jobId is "." or ".." || fileName.Contains('/'))
+        if (jobId is "." or ".." || jobId.Contains('/'))
         {
             throw new InvalidDataException(
-                $"Object key '{objectKey}' must match {uploadsPrefix}{{jobId}}/{{filename}}.");
+                $"Object key '{objectKey}' must match {jobsPrefix}{{jobId}}/input.stl.");
         }
 
         if (!string.Equals(Path.GetExtension(fileName), ".stl", StringComparison.OrdinalIgnoreCase))
@@ -118,7 +117,7 @@ internal sealed class ProcessorWorker(
             }
 
             var report = processor.Process(temporaryPath, fileName);
-            var reportKey = $"{reportsPrefix}{jobId}/report.json";
+            var reportKey = $"{jobsPrefix}{jobId}/report.json";
             await storage.UploadJsonAsync(
                 bucketName,
                 reportKey,

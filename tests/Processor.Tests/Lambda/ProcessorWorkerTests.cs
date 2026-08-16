@@ -14,16 +14,16 @@ public class ProcessorWorkerTests
         var sqsEvent = CreateSqsEvent(
             "message-1",
             "storage-bucket",
-            "uploads/job-123/my+model.stl");
+            "jobs/job-123/input.stl");
 
         var response = await worker.ProcessAsync(sqsEvent);
 
         Assert.Empty(response.BatchItemFailures);
         var upload = Assert.Single(storage.Uploads);
         Assert.Equal("storage-bucket", upload.BucketName);
-        Assert.Equal("reports/job-123/report.json", upload.ObjectKey);
+        Assert.Equal("jobs/job-123/report.json", upload.ObjectKey);
         using var report = JsonDocument.Parse(upload.Json);
-        Assert.Equal("my model.stl", report.RootElement.GetProperty("fileName").GetString());
+        Assert.Equal("input.stl", report.RootElement.GetProperty("fileName").GetString());
         Assert.Equal(2356, report.RootElement.GetProperty("triangleCount").GetInt32());
     }
 
@@ -36,8 +36,8 @@ public class ProcessorWorkerTests
         {
             Records =
             [
-                CreateMessage("message-1", "storage-bucket", "uploads/job-456/model.stl"),
-                CreateMessage("message-2", "storage-bucket", "uploads/job-456/model.stl")
+                CreateMessage("message-1", "storage-bucket", "jobs/job-456/input.stl"),
+                CreateMessage("message-2", "storage-bucket", "jobs/job-456/input.stl")
             ]
         };
 
@@ -46,7 +46,7 @@ public class ProcessorWorkerTests
         Assert.Empty(response.BatchItemFailures);
         Assert.Equal(2, storage.Uploads.Count);
         Assert.All(storage.Uploads, upload =>
-            Assert.Equal("reports/job-456/report.json", upload.ObjectKey));
+            Assert.Equal("jobs/job-456/report.json", upload.ObjectKey));
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public class ProcessorWorkerTests
         var sqsEvent = CreateSqsEvent(
             "message-1",
             "storage-bucket",
-            "uploads/job-123/model.obj");
+            "jobs/job-123/model.obj");
 
         var response = await worker.ProcessAsync(sqsEvent);
 
@@ -90,7 +90,7 @@ public class ProcessorWorkerTests
         var sqsEvent = CreateSqsEvent(
             "message-1",
             "storage-bucket",
-            "uploads/job-123/model.stl",
+            "jobs/job-123/input.stl",
             ProcessorWorker.MaxUploadSizeBytes + 1);
 
         var response = await worker.ProcessAsync(sqsEvent);
@@ -106,8 +106,7 @@ public class ProcessorWorkerTests
             storage,
             new ProcessorApplication(),
             "storage-bucket",
-            "uploads/",
-            "reports/");
+            "jobs/");
     }
 
     private static SQSEvent CreateSqsEvent(
