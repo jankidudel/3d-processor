@@ -33,4 +33,7 @@ internal sealed class S3ObjectEntity
 {
     [JsonPropertyName("key")]
     public string Key { get; init; } = "";
+
+    [JsonPropertyName("size")]
+    public long Size { get; init; }
 }

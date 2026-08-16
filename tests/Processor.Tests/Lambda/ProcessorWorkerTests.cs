@@ -82,6 +82,24 @@ public class ProcessorWorkerTests
         Assert.Empty(storage.Uploads);
     }
 
+    [Fact]
+    public async Task ProcessAsync_OversizedFile_ReturnsPartialBatchFailureWithoutDownloading()
+    {
+        var storage = new FakeObjectStorage(GetFixturePath("valid", "rotor.stl"));
+        var worker = CreateWorker(storage);
+        var sqsEvent = CreateSqsEvent(
+            "message-1",
+            "storage-bucket",
+            "uploads/job-123/model.stl",
+            ProcessorWorker.MaxUploadSizeBytes + 1);
+
+        var response = await worker.ProcessAsync(sqsEvent);
+
+        Assert.Single(response.BatchItemFailures);
+        Assert.Equal(0, storage.DownloadCount);
+        Assert.Empty(storage.Uploads);
+    }
+
     private static ProcessorWorker CreateWorker(IObjectStorage storage)
     {
         return new ProcessorWorker(
@@ -95,18 +113,20 @@ public class ProcessorWorkerTests
     private static SQSEvent CreateSqsEvent(
         string messageId,
         string bucketName,
-        string objectKey)
+        string objectKey,
+        long objectSize = 0)
     {
         return new SQSEvent
         {
-            Records = [CreateMessage(messageId, bucketName, objectKey)]
+            Records = [CreateMessage(messageId, bucketName, objectKey, objectSize)]
         };
     }
 
     private static SQSEvent.SQSMessage CreateMessage(
         string messageId,
         string bucketName,
-        string objectKey)
+        string objectKey,
+        long objectSize = 0)
     {
         return new SQSEvent.SQSMessage
         {
@@ -120,7 +140,7 @@ public class ProcessorWorkerTests
                         s3 = new
                         {
                             bucket = new { name = bucketName },
-                            @object = new { key = objectKey }
+                            @object = new { key = objectKey, size = objectSize }
                         }
                     }
                 }
@@ -144,6 +164,7 @@ public class ProcessorWorkerTests
     private sealed class FakeObjectStorage(string sourceFilePath) : IObjectStorage
     {
         public List<Upload> Uploads { get; } = [];
+        public int DownloadCount { get; private set; }
 
         public async Task DownloadAsync(
             string bucketName,
@@ -151,6 +172,7 @@ public class ProcessorWorkerTests
             Stream destination,
             CancellationToken cancellationToken = default)
         {
+            DownloadCount++;
             await using var source = File.OpenRead(sourceFilePath);
             await source.CopyToAsync(destination, cancellationToken);
         }

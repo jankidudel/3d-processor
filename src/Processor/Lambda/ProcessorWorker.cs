@@ -11,6 +11,8 @@ internal sealed class ProcessorWorker(
     string uploadsPrefix,
     string reportsPrefix)
 {
+    internal const long MaxUploadSizeBytes = 25L * 1024 * 1024;
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
@@ -95,6 +97,12 @@ internal sealed class ProcessorWorker(
         if (!string.Equals(Path.GetExtension(fileName), ".stl", StringComparison.OrdinalIgnoreCase))
         {
             throw new NotSupportedException($"File type for '{fileName}' is not supported.");
+        }
+
+        if (record.S3.Object.Size > MaxUploadSizeBytes)
+        {
+            throw new InvalidDataException(
+                $"Object '{objectKey}' exceeds the 25 MiB processing limit.");
         }
 
         var temporaryPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.stl");
