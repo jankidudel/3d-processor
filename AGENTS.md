@@ -31,6 +31,8 @@ interfaces purely for the sake of having interfaces.
 ## Coding guidelines
 
 - Prefer simple, readable C# over clever abstractions.
+- Use explicit `{}` blocks for every `if`, `else`, loop, and other control-flow
+  body, including single-statement bodies. Do not write braceless control flow.
 - Enable nullable reference types.
 - Use modern C# features where they improve readability.
 - Prefer immutable models where practical.
