@@ -108,7 +108,8 @@ public class ProcessorWorkerTests
     [Fact]
     public async Task ProcessAsync_ValidAsciiStl_WritesNormalReport()
     {
-        var storage = new FakeObjectStorage(GetFixturePath("ascii", "tetrahedron.stl"));
+        var storage = new FakeObjectStorage(
+            GetFixturePath("ascii", "validation-success-closed-tetrahedron.stl"));
         var worker = CreateWorker(storage);
         var sqsEvent = CreateSqsEvent("message-1", "storage-bucket", "jobs/job-ascii/input.stl");
 

@@ -6,9 +6,9 @@ namespace Processor.Tests.Stl;
 public class StlReaderTests
 {
     [Theory]
-    [InlineData("minimal.stl", 1)]
-    [InlineData("tetrahedron.stl", 4)]
-    [InlineData("whitespace-scientific.stl", 1)]
+    [InlineData("validation-failure-open-triangle.stl", 1)]
+    [InlineData("validation-success-closed-tetrahedron.stl", 4)]
+    [InlineData("validation-failure-open-triangle-whitespace-scientific.stl", 1)]
     public void Read_ValidAsciiFixture_ParsesTriangles(string fileName, int triangleCount)
     {
         var mesh = new StlReader().Read(GetFixturePath("ascii", fileName));
@@ -69,7 +69,9 @@ public class StlReaderTests
     [Fact]
     public void Process_EquivalentAsciiAndBinaryGeometry_ProducesEquivalentReport()
     {
-        var asciiPath = GetFixturePath("ascii", "tetrahedron.stl");
+        var asciiPath = GetFixturePath(
+            "ascii",
+            "validation-success-closed-tetrahedron.stl");
         var binaryPath = WriteBinaryTetrahedron();
         try
         {
