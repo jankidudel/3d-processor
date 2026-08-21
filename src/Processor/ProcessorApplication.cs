@@ -41,7 +41,7 @@ public class ProcessorApplication
 
     public StlQualityReport Process(string filePath, string? sourceFileName = null)
     {
-        var mesh = new BinaryStlReader().Read(filePath);
+        var mesh = new StlReader().Read(filePath);
         var validation = new StlValidator().Validate(mesh);
 
         return new StlQualityReportBuilder().Build(filePath, mesh, validation, sourceFileName);

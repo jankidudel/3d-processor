@@ -100,6 +100,26 @@ public class ProcessorWorkerTests
         Assert.Equal("jobs/job-123/failure.json", failure.ObjectKey);
         using var json = JsonDocument.Parse(failure.Json);
         Assert.Equal("processing_failed", json.RootElement.GetProperty("error").GetProperty("code").GetString());
+        Assert.Equal(
+            "This file is not a valid STL file or is incomplete.",
+            json.RootElement.GetProperty("error").GetProperty("message").GetString());
+    }
+
+    [Fact]
+    public async Task ProcessAsync_ValidAsciiStl_WritesNormalReport()
+    {
+        var storage = new FakeObjectStorage(GetFixturePath("ascii", "tetrahedron.stl"));
+        var worker = CreateWorker(storage);
+        var sqsEvent = CreateSqsEvent("message-1", "storage-bucket", "jobs/job-ascii/input.stl");
+
+        var response = await worker.ProcessAsync(sqsEvent);
+
+        Assert.Empty(response.BatchItemFailures);
+        var upload = Assert.Single(storage.Uploads);
+        Assert.Equal("jobs/job-ascii/report.json", upload.ObjectKey);
+        using var report = JsonDocument.Parse(upload.Json);
+        Assert.Equal(4, report.RootElement.GetProperty("triangleCount").GetInt32());
+        Assert.True(report.RootElement.GetProperty("validation").GetProperty("isValid").GetBoolean());
     }
 
     [Fact]

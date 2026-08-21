@@ -4,14 +4,17 @@ namespace Processor.Stl;
 
 public class BinaryStlReader : IStlReader
 {
+    internal const int HeaderLength = 84;
+    internal const int TriangleLength = 50;
+
     public Mesh Read(string filePath)
     {
         using var stream = File.OpenRead(filePath);
         using var reader = new BinaryReader(stream);
 
-        if (stream.Length < 84)
+        if (stream.Length < HeaderLength)
         {
-            throw new InvalidDataException("File is too small to be a binary STL.");
+            throw new MalformedBinaryStlException();
         }
 
         // Binary STL starts with an 80-byte header.
@@ -19,14 +22,11 @@ public class BinaryStlReader : IStlReader
 
         uint triangleCount = reader.ReadUInt32();
 
-        long expectedLength = 84L + triangleCount * 50L;
+        long expectedLength = HeaderLength + triangleCount * (long)TriangleLength;
 
         if (stream.Length < expectedLength)
         {
-            throw new InvalidDataException(
-              $"Invalid binary STL. Expected at least {expectedLength} bytes " +
-              $"but file contains {stream.Length} bytes."
-            );
+            throw new MalformedBinaryStlException();
         }
 
         var mesh = new Mesh();

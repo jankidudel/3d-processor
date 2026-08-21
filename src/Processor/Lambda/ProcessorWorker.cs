@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Amazon.Lambda.SQSEvents;
 using Processor.Reporting;
+using Processor.Stl;
 
 namespace Processor.Lambda;
 
@@ -37,7 +38,7 @@ internal sealed class ProcessorWorker(
                 {
                     try
                     {
-                        await WriteFailureAsync(message, cancellationToken);
+                        await WriteFailureAsync(message, exception, cancellationToken);
                     }
                     catch (Exception failureException)
                     {
@@ -57,6 +58,7 @@ internal sealed class ProcessorWorker(
 
     private async Task WriteFailureAsync(
         SQSEvent.SQSMessage message,
+        Exception exception,
         CancellationToken cancellationToken)
     {
         var s3Event = JsonSerializer.Deserialize<S3EventMessage>(message.Body, JsonOptions);
@@ -76,7 +78,9 @@ internal sealed class ProcessorWorker(
             error = new
             {
                 code = "processing_failed",
-                message = "The STL file could not be processed."
+                message = exception is StlFormatException
+                    ? "This file is not a valid STL file or is incomplete."
+                    : "The STL file could not be processed."
             }
         });
         await storage.UploadJsonAsync(
