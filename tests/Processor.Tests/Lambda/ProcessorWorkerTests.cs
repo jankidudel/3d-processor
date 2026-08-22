@@ -83,7 +83,7 @@ public class ProcessorWorkerTests
     }
 
     [Fact]
-    public async Task ProcessAsync_FinalFailedAttempt_WritesFailureResult()
+    public async Task ProcessAsync_MalformedStl_WritesFailureResultWithoutRetrying()
     {
         var storage = new FakeObjectStorage(GetFixturePath("corrupt", "rotor-truncated.stl"));
         var worker = CreateWorker(storage);
@@ -91,11 +91,9 @@ public class ProcessorWorkerTests
             "message-1",
             "storage-bucket",
             "jobs/job-123/input.stl");
-        sqsEvent.Records[0].Attributes["ApproximateReceiveCount"] = "3";
-
         var response = await worker.ProcessAsync(sqsEvent);
 
-        Assert.Single(response.BatchItemFailures);
+        Assert.Empty(response.BatchItemFailures);
         var failure = Assert.Single(storage.Uploads);
         Assert.Equal("jobs/job-123/failure.json", failure.ObjectKey);
         using var json = JsonDocument.Parse(failure.Json);

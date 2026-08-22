@@ -12,6 +12,7 @@ internal sealed class ProcessorWorker(
     string jobsPrefix)
 {
     internal const long MaxUploadSizeBytes = 25L * 1024 * 1024;
+    internal const int MaxProcessingAttempts = 3;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -34,11 +35,16 @@ internal sealed class ProcessorWorker(
             catch (Exception exception)
             {
                 log?.Invoke($"Processing SQS message {message.MessageId} failed: {exception}");
-                if (IsFinalAttempt(message))
+                var permanentFailure = exception is StlFormatException;
+                if (permanentFailure || IsFinalAttempt(message))
                 {
                     try
                     {
                         await WriteFailureAsync(message, exception, cancellationToken);
+                        if (permanentFailure)
+                        {
+                            continue;
+                        }
                     }
                     catch (Exception failureException)
                     {
@@ -112,7 +118,7 @@ internal sealed class ProcessorWorker(
         return message.Attributes is not null &&
             message.Attributes.TryGetValue("ApproximateReceiveCount", out var rawCount) &&
             int.TryParse(rawCount, out var count) &&
-            count >= 3;
+            count >= MaxProcessingAttempts;
     }
 
     private async Task ProcessMessageAsync(
