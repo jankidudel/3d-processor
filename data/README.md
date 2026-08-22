@@ -17,3 +17,8 @@ The `self-intersection/` directory is reserved for fixtures once a
 self-intersection validation rule is implemented. The current validator does
 not detect triangle intersections, so adding an expectation for that category
 would be misleading.
+
+The ASCII fixtures in `connected-components/` cover connected-component
+reporting: one shell, two and three separate closed shells, and two closed
+shells touching at exactly one vertex. The last case is one component because
+the topology rule treats shared vertices as connected.

@@ -50,6 +50,31 @@ public class StlFileIntegrationTests
         Assert.Equal(expectedIssueCount, validationResult.CountIssues(expectedIssueCode));
     }
 
+    [Theory]
+    [Trait("Category", "Integration")]
+    [InlineData("one-connected-shell.stl", 4, 1, true)]
+    [InlineData("two-disconnected-closed-shells.stl", 8, 2, true)]
+    [InlineData("three-disconnected-shells.stl", 12, 3, true)]
+    [InlineData("two-shells-touching-at-one-vertex.stl", 8, 1, true)]
+    public void AsciiStl_ReadAndValidate_ReportsExpectedConnectedComponents(
+        string fileName,
+        int expectedTriangleCount,
+        int expectedComponentCount,
+        bool expectedValid)
+    {
+        var filePath = GetFixturePath("connected-components", fileName);
+
+        var mesh = new AsciiStlReader().Read(filePath);
+        var validationResult = new StlValidator().Validate(mesh);
+
+        Assert.Equal(expectedTriangleCount, mesh.Triangles.Count);
+        Assert.Equal(expectedComponentCount, validationResult.Topology.ConnectedComponentCount);
+        Assert.Equal(expectedValid, validationResult.IsValid);
+        Assert.Equal(
+            expectedComponentCount > 1 ? expectedComponentCount : 0,
+            validationResult.CountIssues(ValidationIssueCodes.MultipleDisconnectedShells));
+    }
+
     private static string GetFixturePath(string fileName)
     {
         return GetFixturePath("valid", fileName);
