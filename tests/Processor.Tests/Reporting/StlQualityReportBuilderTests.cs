@@ -19,7 +19,7 @@ public class StlQualityReportBuilderTests
             var report = new StlQualityReportBuilder().Build(
                 filePath,
                 mesh,
-                new ValidationResult());
+                new StlValidator().Validate(mesh));
 
             Assert.Equal(Path.GetFileName(filePath), report.FileName);
             Assert.Equal(123, report.FileSizeBytes);
@@ -35,6 +35,7 @@ public class StlQualityReportBuilderTests
             Assert.Equal(1, report.Dimensions.Depth);
             Assert.Equal(1.5 + Math.Sqrt(3) / 2, report.SurfaceArea, 10);
             Assert.Equal(1.0 / 6.0, report.Volume, 10);
+            Assert.Equal(1, report.Topology.ConnectedComponentCount);
         }
         finally
         {

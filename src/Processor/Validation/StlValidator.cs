@@ -1,4 +1,5 @@
 using Processor.Models;
+using Processor.Topology;
 
 namespace Processor.Validation;
 
@@ -9,6 +10,7 @@ public class StlValidator
     public ValidationResult Validate(Mesh mesh)
     {
         var issues = new List<ValidationIssue>();
+        var topology = MeshTopologyAnalyzer.Analyze(mesh);
         var triangleIndices = new Dictionary<TriangleKey, int>();
         var edgeMap = new Dictionary<EdgeKey, List<EdgeUse>>();
 
@@ -58,9 +60,20 @@ public class StlValidator
 
         ValidateEdges(edgeMap, issues);
 
+        if (topology.ConnectedComponentCount > 1)
+        {
+            issues.Add(new ValidationIssue(
+                ValidationIssueCodes.MultipleDisconnectedShells,
+                $"This STL contains {topology.ConnectedComponentCount} separate mesh components. " +
+                "This can be intentional, but check that all parts are expected before printing.",
+                topology.ConnectedComponentCount,
+                ValidationIssueSeverity.Warning));
+        }
+
         return new ValidationResult
         {
-            Issues = issues
+            Issues = issues,
+            Topology = topology
         };
     }
 

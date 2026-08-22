@@ -38,6 +38,7 @@ public class ValidationReportFormatterTests
 
         Assert.Equal("1.0", root.GetProperty("reportVersion").GetString());
         Assert.Equal(12, root.GetProperty("triangleCount").GetInt32());
+        Assert.Equal(0, root.GetProperty("topology").GetProperty("connectedComponentCount").GetInt32());
         var validationJson = root.GetProperty("validation");
         Assert.False(validationJson.GetProperty("isValid").GetBoolean());
         Assert.Equal(2, validationJson.GetProperty("issues")[1].GetProperty("count").GetInt32());

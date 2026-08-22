@@ -1,4 +1,5 @@
 using Processor.Validation;
+using Processor.Topology;
 
 namespace Processor.Reporting;
 
@@ -12,5 +13,6 @@ public sealed class StlQualityReport
     public MeshDimensions Dimensions { get; init; } = new();
     public double SurfaceArea { get; init; }
     public double Volume { get; init; }
+    public MeshTopology Topology { get; init; } = new();
     public ValidationResult Validation { get; init; } = new();
 }

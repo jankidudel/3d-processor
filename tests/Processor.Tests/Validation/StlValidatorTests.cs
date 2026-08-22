@@ -27,6 +27,60 @@ public class StlValidatorTests
         Assert.Empty(result.Issues);
     }
 
+    [Fact]
+    public void Validate_SingleConnectedShell_ReportsOneComponent()
+    {
+        var result = Validate(CreateTetrahedron());
+
+        Assert.Equal(1, result.Topology.ConnectedComponentCount);
+        Assert.DoesNotContain(result.Issues, issue =>
+            issue.Code == ValidationIssueCodes.MultipleDisconnectedShells);
+    }
+
+    [Fact]
+    public void Validate_TwoDisconnectedClosedShells_ReportsWarningButRemainsValid()
+    {
+        var result = Validate(
+        [
+            .. CreateTetrahedron(),
+            .. CreateTetrahedron(new Vector3(3, 0, 0))
+        ]);
+
+        Assert.Equal(2, result.Topology.ConnectedComponentCount);
+        Assert.True(result.IsValid);
+        var issue = Assert.Single(result.Issues);
+        Assert.Equal(ValidationIssueCodes.MultipleDisconnectedShells, issue.Code);
+        Assert.Equal(ValidationIssueSeverity.Warning, issue.Severity);
+        Assert.Equal(2, issue.Count);
+    }
+
+    [Fact]
+    public void Validate_MultipleDisconnectedShells_ReportsAllComponents()
+    {
+        var result = Validate(
+        [
+            .. CreateTetrahedron(),
+            .. CreateTetrahedron(new Vector3(3, 0, 0)),
+            .. CreateTetrahedron(new Vector3(6, 0, 0))
+        ]);
+
+        Assert.Equal(3, result.Topology.ConnectedComponentCount);
+        Assert.Equal(3, result.CountIssues(ValidationIssueCodes.MultipleDisconnectedShells));
+    }
+
+    [Fact]
+    public void Validate_ShellsTouchingAtOneVertex_AreOneComponent()
+    {
+        var result = Validate(
+        [
+            .. CreateTetrahedron(),
+            .. CreateTetrahedronTouchingOrigin()
+        ]);
+
+        Assert.Equal(1, result.Topology.ConnectedComponentCount);
+        Assert.True(result.IsValid);
+    }
+
     [Theory]
     [InlineData(float.NaN)]
     [InlineData(float.PositiveInfinity)]
@@ -184,12 +238,13 @@ public class StlValidatorTests
         Assert.Equal(message, issue.Message);
     }
 
-    private static Triangle[] CreateTetrahedron()
+    private static Triangle[] CreateTetrahedron(Vector3? offset = null)
     {
-        var a = new Vector3(0, 0, 0);
-        var b = new Vector3(1, 0, 0);
-        var c = new Vector3(0, 1, 0);
-        var d = new Vector3(0, 0, 1);
+        var translation = offset ?? new Vector3(0, 0, 0);
+        var a = translation;
+        var b = new Vector3(translation.X + 1, translation.Y, translation.Z);
+        var c = new Vector3(translation.X, translation.Y + 1, translation.Z);
+        var d = new Vector3(translation.X, translation.Y, translation.Z + 1);
 
         return
         [
@@ -197,6 +252,22 @@ public class StlValidatorTests
             CreateTriangle(a, b, d),
             CreateTriangle(a, d, c),
             CreateTriangle(b, c, d)
+        ];
+    }
+
+    private static Triangle[] CreateTetrahedronTouchingOrigin()
+    {
+        var a = new Vector3(0, 0, 0);
+        var b = new Vector3(-1, 0, 0);
+        var c = new Vector3(0, -1, 0);
+        var d = new Vector3(0, 0, -1);
+
+        return
+        [
+            CreateTriangle(a, b, c),
+            CreateTriangle(a, d, b),
+            CreateTriangle(a, c, d),
+            CreateTriangle(b, d, c)
         ];
     }
 

@@ -9,4 +9,5 @@ public static class ValidationIssueCodes
     public const string OpenEdge = "open_edge";
     public const string NonManifoldEdge = "non_manifold_edge";
     public const string InconsistentOrientation = "inconsistent_orientation";
+    public const string MultipleDisconnectedShells = "multiple_disconnected_shells";
 }

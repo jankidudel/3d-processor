@@ -25,6 +25,7 @@ public static class StlQualityReportFormatter
             Dimensions (W x H x D):   {{Format(report.Dimensions.Width)}} x {{Format(report.Dimensions.Height)}} x {{Format(report.Dimensions.Depth)}}
             Surface area:             {{Format(report.SurfaceArea)}}
             Volume:                   {{Format(report.Volume)}}
+            Connected components:     {{report.Topology.ConnectedComponentCount}}
 
             Degenerate triangles:     {{Count(report, ValidationIssueCodes.DegenerateTriangle)}}
             Invalid coordinates:      {{Count(report, ValidationIssueCodes.InvalidCoordinates)}}
@@ -32,6 +33,7 @@ public static class StlQualityReportFormatter
             Open edges:               {{Count(report, ValidationIssueCodes.OpenEdge)}}
             Non-manifold edges:       {{Count(report, ValidationIssueCodes.NonManifoldEdge)}}
             Inconsistent orientation: {{Count(report, ValidationIssueCodes.InconsistentOrientation)}}
+            Disconnected shells:      {{Count(report, ValidationIssueCodes.MultipleDisconnectedShells)}}
 
             Validation: {{(report.Validation.IsValid ? "OK" : "FAIL")}}
             """);
