@@ -25,6 +25,9 @@ public class StlValidatorTests
 
         Assert.True(result.IsValid);
         Assert.Empty(result.Issues);
+        Assert.Equal(0, result.Topology.OpenEdgeCount);
+        Assert.Equal(0, result.Topology.NonManifoldEdgeCount);
+        Assert.False(result.Topology.HasInconsistentOrientation);
     }
 
     [Fact]
@@ -177,6 +180,8 @@ public class StlValidatorTests
             new Vector3(0, 1, 0)));
 
         Assert.Equal(3, result.CountIssues(ValidationIssueCodes.OpenEdge));
+        Assert.Equal(3, result.Topology.OpenEdgeCount);
+        Assert.Equal(0, result.Topology.NonManifoldEdgeCount);
     }
 
     [Fact]
@@ -193,6 +198,8 @@ public class StlValidatorTests
         Assert.Contains(result.Issues, issue =>
             issue.Code == ValidationIssueCodes.NonManifoldEdge &&
             issue.Message.Contains("is used by 3 triangles: 0, 1, 2."));
+        Assert.Equal(6, result.Topology.OpenEdgeCount);
+        Assert.Equal(1, result.Topology.NonManifoldEdgeCount);
     }
 
     [Fact]
@@ -208,6 +215,7 @@ public class StlValidatorTests
         Assert.Contains(result.Issues, issue =>
             issue.Code == ValidationIssueCodes.InconsistentOrientation &&
             issue.Message.StartsWith("Triangles 0 and 1 have inconsistent orientation"));
+        Assert.True(result.Topology.HasInconsistentOrientation);
     }
 
     [Fact]

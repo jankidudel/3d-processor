@@ -10,7 +10,7 @@ public class StlValidator
     public ValidationResult Validate(Mesh mesh)
     {
         var issues = new List<ValidationIssue>();
-        var topology = MeshTopologyAnalyzer.Analyze(mesh);
+        var componentTopology = MeshTopologyAnalyzer.Analyze(mesh);
         var triangleIndices = new Dictionary<TriangleKey, int>();
         var edgeMap = new Dictionary<EdgeKey, List<EdgeUse>>();
 
@@ -58,7 +58,14 @@ public class StlValidator
             AddEdge(edgeMap, triangle.C, triangle.A, i);
         }
 
-        ValidateEdges(edgeMap, issues);
+        var edgeValidation = ValidateEdges(edgeMap, issues);
+        var topology = new MeshTopology
+        {
+            ConnectedComponentCount = componentTopology.ConnectedComponentCount,
+            OpenEdgeCount = edgeValidation.OpenEdgeCount,
+            NonManifoldEdgeCount = edgeValidation.NonManifoldEdgeCount,
+            HasInconsistentOrientation = edgeValidation.HasInconsistentOrientation
+        };
 
         if (topology.ConnectedComponentCount > 1)
         {
@@ -135,20 +142,25 @@ public class StlValidator
         uses.Add(use);
     }
 
-    private static void ValidateEdges(
+    private static EdgeValidationSummary ValidateEdges(
         Dictionary<EdgeKey, List<EdgeUse>> edgeMap,
         List<ValidationIssue> issues)
     {
+        var openEdgeCount = 0;
+        var nonManifoldEdgeCount = 0;
+        var hasInconsistentOrientation = false;
         foreach (var (edge, uses) in edgeMap)
         {
             if (uses.Count == 1)
             {
+                openEdgeCount++;
                 issues.Add(new ValidationIssue(
                     ValidationIssueCodes.OpenEdge,
                     $"Open edge {FormatEdge(edge)} is used only by triangle {uses[0].TriangleIndex}."));
             }
             else if (uses.Count > 2)
             {
+                nonManifoldEdgeCount++;
                 var triangleList = string.Join(", ", uses.Select(use => use.TriangleIndex));
                 issues.Add(new ValidationIssue(
                     ValidationIssueCodes.NonManifoldEdge,
@@ -156,12 +168,18 @@ public class StlValidator
             }
             else if (uses[0].IsCanonicalDirection == uses[1].IsCanonicalDirection)
             {
+                hasInconsistentOrientation = true;
                 issues.Add(new ValidationIssue(
                     ValidationIssueCodes.InconsistentOrientation,
                     $"Triangles {uses[0].TriangleIndex} and {uses[1].TriangleIndex} have inconsistent " +
                     $"orientation along edge {FormatEdge(edge)}."));
             }
         }
+
+        return new EdgeValidationSummary(
+            openEdgeCount,
+            nonManifoldEdgeCount,
+            hasInconsistentOrientation);
     }
 
     private static string FormatEdge(EdgeKey edge)
@@ -189,6 +207,11 @@ public class StlValidator
     private readonly record struct EdgeKey(Vector3 Start, Vector3 End);
 
     private readonly record struct EdgeUse(int TriangleIndex, bool IsCanonicalDirection);
+
+    private readonly record struct EdgeValidationSummary(
+        int OpenEdgeCount,
+        int NonManifoldEdgeCount,
+        bool HasInconsistentOrientation);
 
     private readonly record struct TriangleKey(Vector3 First, Vector3 Second, Vector3 Third)
     {
