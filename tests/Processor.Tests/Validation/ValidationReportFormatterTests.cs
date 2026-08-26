@@ -44,6 +44,37 @@ public class ValidationReportFormatterTests
         Assert.Equal(2, validationJson.GetProperty("issues")[1].GetProperty("count").GetInt32());
     }
 
+    [Fact]
+    public void FormatJson_ThreeMfReport_ContainsOptionalFormatFields()
+    {
+        var report = new StlQualityReport
+        {
+            FileName = "model.3mf",
+            FileSizeBytes = 100,
+            TriangleCount = 12,
+            Validation = new ValidationResult(),
+            FileFormat = "3mf",
+            SourceUnit = "millimeter",
+            ModelObjectCount = 2,
+            BuildItemCount = 3
+        };
+
+        using var document = JsonDocument.Parse(StlQualityReportFormatter.FormatJson(report));
+        var root = document.RootElement;
+
+        Assert.Equal("3mf", root.GetProperty("fileFormat").GetString());
+        Assert.Equal("millimeter", root.GetProperty("sourceUnit").GetString());
+        Assert.Equal(2, root.GetProperty("modelObjectCount").GetInt32());
+        Assert.Equal(3, root.GetProperty("buildItemCount").GetInt32());
+    }
+
+    [Fact]
+    public void FormatJson_StlReport_ExplicitlyIdentifiesStlFormat()
+    {
+        using var document = JsonDocument.Parse(StlQualityReportFormatter.FormatJson(CreateReport(1, new ValidationResult())));
+        Assert.Equal("stl", document.RootElement.GetProperty("fileFormat").GetString());
+    }
+
     private static StlQualityReport CreateReport(int triangleCount, ValidationResult validation)
     {
         return new StlQualityReport

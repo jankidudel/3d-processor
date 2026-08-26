@@ -2,6 +2,7 @@ using System.Text.Json;
 using Amazon.Lambda.SQSEvents;
 using Processor.Reporting;
 using Processor.Stl;
+using Processor.ThreeMf;
 
 namespace Processor.Lambda;
 
@@ -35,7 +36,7 @@ internal sealed class ProcessorWorker(
             catch (Exception exception)
             {
                 log?.Invoke($"Processing SQS message {message.MessageId} failed: {exception}");
-                var permanentFailure = exception is StlFormatException;
+                var permanentFailure = exception is StlFormatException or ThreeMfFormatException;
                 if (permanentFailure || IsFinalAttempt(message))
                 {
                     try
@@ -84,9 +85,11 @@ internal sealed class ProcessorWorker(
             error = new
             {
                 code = "processing_failed",
-                message = exception is StlFormatException
-                    ? "This file is not a valid STL file or is incomplete."
-                    : "The STL file could not be processed."
+                message = exception is ThreeMfFormatException threeMfException
+                    ? ThreeMfFailureMessage(threeMfException)
+                    : exception is StlFormatException
+                        ? "This file is not a valid STL file or is incomplete."
+                        : "The file could not be processed."
             }
         });
         await storage.UploadJsonAsync(
@@ -94,6 +97,13 @@ internal sealed class ProcessorWorker(
             $"{jobsPrefix}{jobId}/failure.json",
             failureJson,
             cancellationToken);
+    }
+
+    private static string ThreeMfFailureMessage(ThreeMfFormatException exception)
+    {
+        return exception.Message.Contains("does not support", StringComparison.Ordinal)
+            ? "This 3MF file uses a feature that InspectMesh does not support yet."
+            : "This 3MF file could not be analysed safely.";
     }
 
     private bool TryGetJobId(string objectKey, out string jobId)
@@ -105,7 +115,7 @@ internal sealed class ProcessorWorker(
         }
         var relativeKey = objectKey[jobsPrefix.Length..];
         var separatorIndex = relativeKey.IndexOf('/');
-        if (separatorIndex <= 0 || relativeKey[(separatorIndex + 1)..] != "input.stl")
+        if (separatorIndex <= 0 || !IsSupportedInputName(relativeKey[(separatorIndex + 1)..]))
         {
             return false;
         }
@@ -157,10 +167,10 @@ internal sealed class ProcessorWorker(
             ? objectKey[jobsPrefix.Length..]
             : throw new InvalidDataException($"Object key '{objectKey}' is outside '{jobsPrefix}'.");
         var separatorIndex = relativeKey.IndexOf('/');
-        if (separatorIndex <= 0 || relativeKey[(separatorIndex + 1)..] != "input.stl")
+        if (separatorIndex <= 0 || !IsSupportedInputName(relativeKey[(separatorIndex + 1)..]))
         {
             throw new InvalidDataException(
-                $"Object key '{objectKey}' must match {jobsPrefix}{{jobId}}/input.stl.");
+                $"Object key '{objectKey}' must be a supported job input.");
         }
 
         var jobId = relativeKey[..separatorIndex];
@@ -168,10 +178,10 @@ internal sealed class ProcessorWorker(
         if (jobId is "." or ".." || jobId.Contains('/'))
         {
             throw new InvalidDataException(
-                $"Object key '{objectKey}' must match {jobsPrefix}{{jobId}}/input.stl.");
+                $"Object key '{objectKey}' must be a supported job input.");
         }
 
-        if (!string.Equals(Path.GetExtension(fileName), ".stl", StringComparison.OrdinalIgnoreCase))
+        if (!IsSupportedInputName(fileName))
         {
             throw new NotSupportedException($"File type for '{fileName}' is not supported.");
         }
@@ -192,7 +202,7 @@ internal sealed class ProcessorWorker(
                 $"Object '{objectKey}' exceeds the 25 MiB processing limit.");
         }
 
-        var temporaryPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.stl");
+        var temporaryPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}{Path.GetExtension(fileName)}");
         try
         {
             await using (var temporaryFile = File.Create(temporaryPath))
@@ -217,6 +227,11 @@ internal sealed class ProcessorWorker(
         {
             File.Delete(temporaryPath);
         }
+    }
+
+    private static bool IsSupportedInputName(string name)
+    {
+        return name is "input.stl" or "input.3mf";
     }
 
     private static string DecodeObjectKey(string objectKey)

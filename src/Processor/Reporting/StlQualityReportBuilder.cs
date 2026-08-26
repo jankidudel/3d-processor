@@ -9,13 +9,21 @@ public sealed class StlQualityReportBuilder
         string filePath,
         Mesh mesh,
         ValidationResult validation,
-        string? sourceFileName = null)
+        string? sourceFileName = null,
+        string fileFormat = "stl",
+        string? sourceUnit = null,
+        int? modelObjectCount = null,
+        int? buildItemCount = null)
     {
         var geometry = CalculateGeometry(mesh);
 
         return new StlQualityReport
         {
             FileName = sourceFileName ?? Path.GetFileName(filePath),
+            FileFormat = fileFormat,
+            SourceUnit = sourceUnit,
+            ModelObjectCount = modelObjectCount,
+            BuildItemCount = buildItemCount,
             FileSizeBytes = new FileInfo(filePath).Length,
             TriangleCount = mesh.Triangles.Count,
             BoundingBox = geometry.BoundingBox,

@@ -1,5 +1,6 @@
 using Processor.Reporting;
 using Processor.Stl;
+using Processor.ThreeMf;
 using Processor.Validation;
 
 namespace Processor;
@@ -41,9 +42,23 @@ public class ProcessorApplication
 
     public StlQualityReport Process(string filePath, string? sourceFileName = null)
     {
+        if (string.Equals(Path.GetExtension(filePath), ".3mf", StringComparison.OrdinalIgnoreCase))
+        {
+            var document = new ThreeMfReader().Read(filePath);
+            var validation = ThreeMfValidationAggregator.ValidateBuildItems(document.BuildItemMeshes);
+            return new StlQualityReportBuilder().Build(
+                filePath,
+                document.Mesh,
+                validation,
+                sourceFileName,
+                "3mf",
+                document.SourceUnit,
+                document.ModelObjectCount,
+                document.BuildItemCount);
+        }
         var mesh = new StlReader().Read(filePath);
-        var validation = new StlValidator().Validate(mesh);
+        var stlValidation = new StlValidator().Validate(mesh);
 
-        return new StlQualityReportBuilder().Build(filePath, mesh, validation, sourceFileName);
+        return new StlQualityReportBuilder().Build(filePath, mesh, stlValidation, sourceFileName, "stl");
     }
 }

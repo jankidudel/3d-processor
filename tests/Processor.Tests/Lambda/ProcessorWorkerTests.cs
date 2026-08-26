@@ -104,6 +104,56 @@ public class ProcessorWorkerTests
     }
 
     [Fact]
+    public async Task ProcessAsync_InvalidThreeMf_WritesControlledFailureWithoutRetrying()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.3mf");
+        await File.WriteAllTextAsync(path, "not a ZIP package");
+        try
+        {
+            var storage = new FakeObjectStorage(path);
+            var worker = CreateWorker(storage);
+            var response = await worker.ProcessAsync(CreateSqsEvent(
+                "message-3mf", "storage-bucket", "jobs/job-3mf/input.3mf"));
+
+            Assert.Empty(response.BatchItemFailures);
+            var failure = Assert.Single(storage.Uploads);
+            using var json = JsonDocument.Parse(failure.Json);
+            Assert.Equal("This 3MF file could not be analysed safely.", json.RootElement.GetProperty("error").GetProperty("message").GetString());
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task ProcessAsync_UnsupportedThreeMfFeature_WritesSpecificSafeFailure()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.3mf");
+        await using (var stream = File.Create(path))
+        using (var archive = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Create))
+        {
+            WriteEntry(archive, "_rels/.rels", """<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rel" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel" Target="3D/model.model"/></Relationships>""");
+            WriteEntry(archive, "3D/model.model", """<model requiredextensions="p" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"><resources/><build/></model>""");
+        }
+        try
+        {
+            var storage = new FakeObjectStorage(path);
+            var response = await CreateWorker(storage).ProcessAsync(CreateSqsEvent("message-feature", "storage-bucket", "jobs/job-feature/input.3mf"));
+            Assert.Empty(response.BatchItemFailures);
+            using var json = JsonDocument.Parse(Assert.Single(storage.Uploads).Json);
+            Assert.Equal("This 3MF file uses a feature that InspectMesh does not support yet.", json.RootElement.GetProperty("error").GetProperty("message").GetString());
+        }
+        finally { File.Delete(path); }
+    }
+
+    private static void WriteEntry(System.IO.Compression.ZipArchive archive, string name, string content)
+    {
+        using var writer = new StreamWriter(archive.CreateEntry(name).Open());
+        writer.Write(content);
+    }
+
+    [Fact]
     public async Task ProcessAsync_ValidAsciiStl_WritesNormalReport()
     {
         var storage = new FakeObjectStorage(

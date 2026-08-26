@@ -7,6 +7,10 @@ public sealed class StlQualityReport
 {
     public string ReportVersion { get; init; } = "1.0";
     public string FileName { get; init; } = "";
+    public string FileFormat { get; init; } = "stl";
+    public string? SourceUnit { get; init; }
+    public int? ModelObjectCount { get; init; }
+    public int? BuildItemCount { get; init; }
     public long FileSizeBytes { get; init; }
     public int TriangleCount { get; init; }
     public MeshBoundingBox BoundingBox { get; init; } = new();
