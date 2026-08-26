@@ -91,7 +91,13 @@ public class StlFileIntegrationTests
 
         Assert.NotNull(directory);
 
-        var filePath = Path.Combine(directory.FullName, "data", directoryName, fileName);
+        var filePath = Path.Combine(
+            directory.FullName,
+            "tests",
+            "TestData",
+            "stl",
+            directoryName,
+            fileName);
         Assert.True(File.Exists(filePath), $"Integration fixture was not found: {filePath}");
         return filePath;
     }

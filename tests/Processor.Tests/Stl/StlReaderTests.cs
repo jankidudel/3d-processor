@@ -172,6 +172,6 @@ public class StlReaderTests
         }
 
         Assert.NotNull(directory);
-        return Path.Combine(directory.FullName, "data", directoryName, fileName);
+        return Path.Combine(directory.FullName, "tests", "TestData", "stl", directoryName, fileName);
     }
 }

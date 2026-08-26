@@ -136,6 +136,11 @@ internal sealed class ProcessorWorker(
         Action<string>? log,
         CancellationToken cancellationToken)
     {
+        if (IsS3NotificationTestEvent(message.Body))
+        {
+            log?.Invoke($"Ignoring S3 notification test message {message.MessageId}.");
+            return;
+        }
         var s3Event = JsonSerializer.Deserialize<S3EventMessage>(message.Body, JsonOptions)
             ?? throw new InvalidDataException("SQS message does not contain an S3 event.");
 
@@ -147,6 +152,20 @@ internal sealed class ProcessorWorker(
         foreach (var record in s3Event.Records)
         {
             await ProcessObjectAsync(record, log, cancellationToken);
+        }
+    }
+
+    private static bool IsS3NotificationTestEvent(string messageBody)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(messageBody);
+            return document.RootElement.TryGetProperty("Event", out var eventName) &&
+                string.Equals(eventName.GetString(), "s3:TestEvent", StringComparison.Ordinal);
+        }
+        catch (JsonException)
+        {
+            return false;
         }
     }
 

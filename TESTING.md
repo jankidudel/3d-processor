@@ -29,7 +29,7 @@ dotnet test 3d-processor.slnx --nologo --filter "Category!=Integration"
 
 ## Run integration tests
 
-Integration tests read the checked-in STL fixtures under `data/valid/`. Run only
+Integration tests read the checked-in STL fixtures under `tests/TestData/stl/`. Run only
 tests marked with the xUnit `Category=Integration` trait:
 
 ```sh

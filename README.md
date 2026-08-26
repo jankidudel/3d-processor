@@ -8,7 +8,7 @@ The processor is currently a .NET console application. Run it from the
 repository root and pass the path to an STL file after `--`:
 
 ```sh
-dotnet run --project src/Processor/Processor.csproj -- data/valid/rotor.stl
+dotnet run --project src/Processor/Processor.csproj -- tests/TestData/stl/valid/rotor.stl
 ```
 
 The `--` separates `dotnet run` options from arguments passed to the
@@ -27,7 +27,7 @@ Validation: OK
 Another checked-in fixture can be used in the same way:
 
 ```sh
-dotnet run --project src/Processor/Processor.csproj -- data/valid/releaser.stl
+dotnet run --project src/Processor/Processor.csproj -- tests/TestData/stl/valid/releaser.stl
 ```
 
 This reports `1246` triangles. Running without a file prints
@@ -38,7 +38,7 @@ triangle count, totals for each validation issue category, and an overall
 validation status. To receive the same summary as structured JSON, add `--json`:
 
 ```sh
-dotnet run --project src/Processor/Processor.csproj -- data/valid/releaser.stl --json
+dotnet run --project src/Processor/Processor.csproj -- tests/TestData/stl/valid/releaser.stl --json
 ```
 
 The process exits with status code 0 for a valid mesh and 2 when validation
@@ -67,7 +67,7 @@ dotnet test 3d-processor.slnx
 
 ### Integration tests
 
-The integration tests read the checked-in binary STL fixtures under `data/`,
+The integration tests read the checked-in binary STL fixtures under `tests/TestData/`,
 verify known metadata and validation results, and exercise corrupt-file handling.
 
 Run only the real-file integration tests:

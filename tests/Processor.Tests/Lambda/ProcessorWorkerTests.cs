@@ -67,6 +67,37 @@ public class ProcessorWorkerTests
     }
 
     [Fact]
+    public async Task ProcessAsync_S3NotificationTestEvent_IsAcknowledgedWithoutRetrying()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var storage = new FakeObjectStorage(path);
+            var worker = CreateWorker(storage);
+            var sqsEvent = new SQSEvent
+            {
+                Records =
+                [
+                    new SQSEvent.SQSMessage
+                    {
+                        MessageId = "s3-test-event",
+                        Body = "{\"Service\":\"Amazon S3\",\"Event\":\"s3:TestEvent\"}"
+                    }
+                ]
+            };
+
+            var response = await worker.ProcessAsync(sqsEvent);
+
+            Assert.Empty(response.BatchItemFailures);
+            Assert.Empty(storage.Uploads);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task ProcessAsync_UnsupportedFile_ReturnsPartialBatchFailure()
     {
         var storage = new FakeObjectStorage(GetFixturePath("valid", "rotor.stl"));
@@ -268,7 +299,7 @@ public class ProcessorWorkerTests
         }
 
         Assert.NotNull(directory);
-        return Path.Combine(directory.FullName, "data", directoryName, fileName);
+        return Path.Combine(directory.FullName, "tests", "TestData", "stl", directoryName, fileName);
     }
 
     private sealed class FakeObjectStorage(string sourceFilePath) : IObjectStorage
