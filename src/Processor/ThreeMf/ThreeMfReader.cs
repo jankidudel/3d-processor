@@ -133,6 +133,10 @@ public sealed class ThreeMfReader
             buildItemMeshes.Add(buildItemMesh);
             mesh.Triangles.AddRange(buildItemMesh.Triangles);
         }
+        if (mesh.Triangles.Count == 0)
+        {
+            throw new ThreeMfFormatException("This 3MF file does not contain usable build geometry.");
+        }
         return new ThreeMfDocument(mesh, buildItemMeshes, model.Unit, model.Objects.Count, model.BuildItems.Count);
     }
 

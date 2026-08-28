@@ -131,6 +131,23 @@ public sealed class ThreeMfReaderTests
     }
 
     [Fact]
+    public void Read_RejectsBuildWithoutUsableGeometry()
+    {
+        var path = CreatePackage("""
+            <model xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"><resources><object id="1"><mesh><vertices><vertex x="0" y="0" z="0"/></vertices><triangles/></mesh></object></resources><build><item objectid="1"/></build></model>
+            """);
+        try
+        {
+            var exception = Assert.Throws<ThreeMfFormatException>(() => new ThreeMfReader().Read(path));
+            Assert.Contains("usable build geometry", exception.Message);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void Read_RejectsUnsafeCompressionRatio()
     {
         var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.3mf");
