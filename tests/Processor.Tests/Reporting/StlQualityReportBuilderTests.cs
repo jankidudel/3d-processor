@@ -73,6 +73,33 @@ public class StlQualityReportBuilderTests
         }
     }
 
+    [Fact]
+    public void Build_OpenTriangle_IncludesBoundedOptionalHighlightSamples()
+    {
+        var filePath = Path.GetTempFileName();
+        try
+        {
+            var mesh = new Mesh();
+            mesh.Triangles.Add(new Triangle(
+                new Vector3(0, 0, 1),
+                new Vector3(0, 0, 0),
+                new Vector3(1, 0, 0),
+                new Vector3(0, 1, 0)));
+
+            var report = new StlQualityReportBuilder().Build(
+                filePath, mesh, new StlValidator().Validate(mesh));
+
+            var samples = Assert.IsType<StlIssueHighlights>(report.IssueHighlights).Samples;
+            Assert.Equal(3, samples[ValidationIssueCodes.OpenEdge].Count);
+            Assert.All(samples.Values, values => Assert.True(values.Count <= StlIssueHighlights.SampleLimit));
+            Assert.Contains("\"issueHighlights\"", StlQualityReportFormatter.FormatJson(report));
+        }
+        finally
+        {
+            File.Delete(filePath);
+        }
+    }
+
     private static Mesh CreateUnitTetrahedron()
     {
         var zero = new Vector3(0, 0, 0);

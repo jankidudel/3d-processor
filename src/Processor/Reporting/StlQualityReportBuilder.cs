@@ -36,7 +36,8 @@ public sealed class StlQualityReportBuilder
             SurfaceArea = geometry.SurfaceArea,
             Volume = Math.Abs(geometry.SignedVolume),
             Topology = validation.Topology,
-            Validation = validation
+            Validation = validation,
+            IssueHighlights = fileFormat == "stl" ? StlIssueHighlightSampler.Sample(mesh) : null
         };
     }
 

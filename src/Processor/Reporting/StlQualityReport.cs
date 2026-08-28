@@ -19,4 +19,5 @@ public sealed class StlQualityReport
     public double Volume { get; init; }
     public MeshTopology Topology { get; init; } = new();
     public ValidationResult Validation { get; init; } = new();
+    public StlIssueHighlights? IssueHighlights { get; init; }
 }
