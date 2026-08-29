@@ -148,7 +148,15 @@ public sealed class ThreeMfReader
         }
         foreach (var triangle in item.Triangles)
         {
-            mesh.Triangles.Add(new Triangle(new Vector3(0, 0, 0), transform.Apply(item.Vertices[triangle.A]), transform.Apply(item.Vertices[triangle.B]), transform.Apply(item.Vertices[triangle.C])));
+            var a = transform.Apply(item.Vertices[triangle.A]);
+            var b = transform.Apply(item.Vertices[triangle.B]);
+            var c = transform.Apply(item.Vertices[triangle.C]);
+            // A reflected build/component transform reverses winding. Preserve
+            // the source mesh orientation so signed-volume aggregation remains
+            // correct for resolved builds containing mirrored instances.
+            mesh.Triangles.Add(transform.IsMirrored
+                ? new Triangle(new Vector3(0, 0, 0), a, c, b)
+                : new Triangle(new Vector3(0, 0, 0), a, b, c));
         }
         foreach (var component in item.Components)
         {
@@ -174,13 +182,15 @@ public sealed class ThreeMfReader
     private sealed record Transform(float M00, float M01, float M02, float M03, float M10, float M11, float M12, float M13, float M20, float M21, float M22, float M23)
     {
         public static Transform Identity { get; } = new(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0);
+        public bool IsMirrored => Determinant < 0;
+        private float Determinant => M00 * (M11 * M22 - M12 * M21) - M01 * (M10 * M22 - M12 * M20) + M02 * (M10 * M21 - M11 * M20);
         public static Transform Parse(string? text)
         {
             if (string.IsNullOrWhiteSpace(text)) { return Identity; }
             var values = text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Select(ParseFloat).ToArray();
             if (values.Length != 12) { throw new ThreeMfFormatException("This 3MF file contains an invalid transform."); }
             var result = new Transform(values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8], values[9], values[10], values[11]);
-            var determinant = result.M00 * (result.M11 * result.M22 - result.M12 * result.M21) - result.M01 * (result.M10 * result.M22 - result.M12 * result.M20) + result.M02 * (result.M10 * result.M21 - result.M11 * result.M20);
+            var determinant = result.Determinant;
             if (!float.IsFinite(determinant) || Math.Abs(determinant) < 1e-12f) { throw new ThreeMfFormatException("This 3MF file contains an invalid transform."); }
             return result;
         }
