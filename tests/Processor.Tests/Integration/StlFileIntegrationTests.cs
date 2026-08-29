@@ -16,7 +16,7 @@ public class StlFileIntegrationTests
         var filePath = GetFixturePath(fileName);
 
         var mesh = new BinaryStlReader().Read(filePath);
-        var validationResult = new StlValidator().Validate(mesh);
+        var validationResult = new MeshValidator().Validate(mesh);
 
         Assert.Equal(expectedTriangleCount, mesh.Triangles.Count);
         Assert.True(
@@ -43,7 +43,7 @@ public class StlFileIntegrationTests
         var filePath = GetFixturePath(directoryName, fileName);
 
         var mesh = new BinaryStlReader().Read(filePath);
-        var validationResult = new StlValidator().Validate(mesh);
+        var validationResult = new MeshValidator().Validate(mesh);
 
         Assert.Equal(expectedTriangleCount, mesh.Triangles.Count);
         Assert.False(validationResult.IsValid);
@@ -65,7 +65,7 @@ public class StlFileIntegrationTests
         var filePath = GetFixturePath("connected-components", fileName);
 
         var mesh = new AsciiStlReader().Read(filePath);
-        var validationResult = new StlValidator().Validate(mesh);
+        var validationResult = new MeshValidator().Validate(mesh);
 
         Assert.Equal(expectedTriangleCount, mesh.Triangles.Count);
         Assert.Equal(expectedComponentCount, validationResult.Topology.ConnectedComponentCount);

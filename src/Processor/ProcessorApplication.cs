@@ -27,8 +27,8 @@ public class ProcessorApplication
         {
             var report = Process(filePath);
             var output = jsonOutput
-                ? StlQualityReportFormatter.FormatJson(report)
-                : StlQualityReportFormatter.FormatText(report);
+                ? MeshQualityReportFormatter.FormatJson(report)
+                : MeshQualityReportFormatter.FormatText(report);
             outputWriter.WriteLine(output);
 
             return report.Validation.IsValid ? 0 : 2;
@@ -40,13 +40,13 @@ public class ProcessorApplication
         }
     }
 
-    public StlQualityReport Process(string filePath, string? sourceFileName = null)
+    public MeshQualityReport Process(string filePath, string? sourceFileName = null)
     {
         if (string.Equals(Path.GetExtension(filePath), ".3mf", StringComparison.OrdinalIgnoreCase))
         {
             var document = new ThreeMfReader().Read(filePath);
             var validation = ThreeMfValidationAggregator.ValidateBuildItems(document.BuildItemMeshes);
-            return new StlQualityReportBuilder().Build(
+            return new MeshQualityReportBuilder().Build(
                 filePath,
                 document.Mesh,
                 validation,
@@ -54,11 +54,12 @@ public class ProcessorApplication
                 "3mf",
                 document.SourceUnit,
                 document.ModelObjectCount,
-                document.BuildItemCount);
+                document.BuildItemCount,
+                includeIssueHighlights: false);
         }
         var mesh = new StlReader().Read(filePath);
-        var stlValidation = new StlValidator().Validate(mesh);
+        var stlValidation = new MeshValidator().Validate(mesh);
 
-        return new StlQualityReportBuilder().Build(filePath, mesh, stlValidation, sourceFileName, "stl");
+        return new MeshQualityReportBuilder().Build(filePath, mesh, stlValidation, sourceFileName, "stl");
     }
 }

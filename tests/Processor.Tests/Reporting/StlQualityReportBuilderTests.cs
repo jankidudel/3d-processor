@@ -4,7 +4,7 @@ using Processor.Validation;
 
 namespace Processor.Tests.Reporting;
 
-public class StlQualityReportBuilderTests
+public class MeshQualityReportBuilderTests
 {
     [Fact]
     public void Build_Tetrahedron_CalculatesFileAndGeometryMetadata()
@@ -16,10 +16,10 @@ public class StlQualityReportBuilderTests
             File.WriteAllBytes(filePath, new byte[123]);
             var mesh = CreateUnitTetrahedron();
 
-            var report = new StlQualityReportBuilder().Build(
+            var report = new MeshQualityReportBuilder().Build(
                 filePath,
                 mesh,
-                new StlValidator().Validate(mesh));
+                new MeshValidator().Validate(mesh));
 
             Assert.Equal(Path.GetFileName(filePath), report.FileName);
             Assert.Equal(123, report.FileSizeBytes);
@@ -57,11 +57,11 @@ public class StlQualityReportBuilderTests
                 new Vector3(1, 0, 0),
                 new Vector3(0, 1, 0)));
 
-            var report = new StlQualityReportBuilder().Build(
+            var report = new MeshQualityReportBuilder().Build(
                 filePath,
                 mesh,
-                new StlValidator().Validate(mesh));
-            var json = StlQualityReportFormatter.FormatJson(report);
+                new MeshValidator().Validate(mesh));
+            var json = MeshQualityReportFormatter.FormatJson(report);
 
             Assert.Equal(0, report.SurfaceArea);
             Assert.Equal(0, report.Volume);
@@ -86,13 +86,13 @@ public class StlQualityReportBuilderTests
                 new Vector3(1, 0, 0),
                 new Vector3(0, 1, 0)));
 
-            var report = new StlQualityReportBuilder().Build(
-                filePath, mesh, new StlValidator().Validate(mesh));
+            var report = new MeshQualityReportBuilder().Build(
+                filePath, mesh, new MeshValidator().Validate(mesh));
 
-            var samples = Assert.IsType<StlIssueHighlights>(report.IssueHighlights).Samples;
+            var samples = Assert.IsType<MeshIssueHighlights>(report.IssueHighlights).Samples;
             Assert.Equal(3, samples[ValidationIssueCodes.OpenEdge].Count);
-            Assert.All(samples.Values, values => Assert.True(values.Count <= StlIssueHighlights.SampleLimit));
-            Assert.Contains("\"issueHighlights\"", StlQualityReportFormatter.FormatJson(report));
+            Assert.All(samples.Values, values => Assert.True(values.Count <= MeshIssueHighlights.SampleLimit));
+            Assert.Contains("\"issueHighlights\"", MeshQualityReportFormatter.FormatJson(report));
         }
         finally
         {

@@ -31,7 +31,7 @@ public class StlPerformanceSmokeTests(ITestOutputHelper output)
                 var initialWorkingSet = process.WorkingSet64;
                 var stopwatch = Stopwatch.StartNew();
 
-                StlQualityReport report = new ProcessorApplication().Process(filePath);
+                MeshQualityReport report = new ProcessorApplication().Process(filePath);
 
                 stopwatch.Stop();
                 process.Refresh();

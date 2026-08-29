@@ -1,6 +1,9 @@
+using Processor.Formats;
+
 namespace Processor.Stl;
 
-public abstract class StlFormatException(string message) : IOException(message);
+public abstract class StlFormatException(string message)
+    : ModelFormatException(message, "This file is not a valid STL file or is incomplete.");
 
 public sealed class UnrecognizedStlFormatException()
     : StlFormatException("The file format is not a recognized STL encoding.");

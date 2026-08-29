@@ -4,7 +4,7 @@ using Processor.Validation;
 
 namespace Processor.Reporting;
 
-public static class StlQualityReportFormatter
+public static class MeshQualityReportFormatter
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -12,7 +12,7 @@ public static class StlQualityReportFormatter
         WriteIndented = true
     };
 
-    public static string FormatText(StlQualityReport report)
+    public static string FormatText(MeshQualityReport report)
     {
         return FormattableString.Invariant($$"""
             STL Quality Report
@@ -39,12 +39,12 @@ public static class StlQualityReportFormatter
             """);
     }
 
-    public static string FormatJson(StlQualityReport report)
+    public static string FormatJson(MeshQualityReport report)
     {
         return JsonSerializer.Serialize(report, JsonOptions);
     }
 
-    private static int Count(StlQualityReport report, string code)
+    private static int Count(MeshQualityReport report, string code)
     {
         return report.Validation.CountIssues(code);
     }

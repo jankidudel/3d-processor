@@ -7,7 +7,7 @@ public static class ThreeMfValidationAggregator
 {
     public static ValidationResult ValidateBuildItems(IReadOnlyList<Models.Mesh> buildItemMeshes)
     {
-        var results = buildItemMeshes.Select(mesh => new StlValidator().Validate(mesh)).ToList();
+        var results = buildItemMeshes.Select(mesh => new MeshValidator().Validate(mesh)).ToList();
         var issues = results
             .SelectMany(result => result.Issues)
             .GroupBy(issue => new { issue.Code, issue.Severity })

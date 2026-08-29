@@ -3,7 +3,7 @@ using Processor.Topology;
 
 namespace Processor.Reporting;
 
-public sealed class StlQualityReport
+public sealed class MeshQualityReport
 {
     public string ReportVersion { get; init; } = "1.0";
     public string FileName { get; init; } = "";
@@ -19,5 +19,5 @@ public sealed class StlQualityReport
     public double Volume { get; init; }
     public MeshTopology Topology { get; init; } = new();
     public ValidationResult Validation { get; init; } = new();
-    public StlIssueHighlights? IssueHighlights { get; init; }
+    public MeshIssueHighlights? IssueHighlights { get; init; }
 }

@@ -3,7 +3,7 @@ using Processor.Validation;
 
 namespace Processor.Tests.Validation;
 
-public class StlValidatorTests
+public class MeshValidatorTests
 {
     private static readonly Vector3 ZeroNormal = new(0, 0, 0);
 
@@ -236,7 +236,7 @@ public class StlValidatorTests
     {
         var mesh = new Mesh();
         mesh.Triangles.AddRange(triangles);
-        return new StlValidator().Validate(mesh);
+        return new MeshValidator().Validate(mesh);
     }
 
     private static void AssertIssue(ValidationResult result, string code, string message)

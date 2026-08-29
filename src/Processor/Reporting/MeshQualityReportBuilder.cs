@@ -3,9 +3,9 @@ using Processor.Validation;
 
 namespace Processor.Reporting;
 
-public sealed class StlQualityReportBuilder
+public sealed class MeshQualityReportBuilder
 {
-    public StlQualityReport Build(
+    public MeshQualityReport Build(
         string filePath,
         Mesh mesh,
         ValidationResult validation,
@@ -13,11 +13,12 @@ public sealed class StlQualityReportBuilder
         string fileFormat = "stl",
         string? sourceUnit = null,
         int? modelObjectCount = null,
-        int? buildItemCount = null)
+        int? buildItemCount = null,
+        bool includeIssueHighlights = true)
     {
         var geometry = CalculateGeometry(mesh);
 
-        return new StlQualityReport
+        return new MeshQualityReport
         {
             FileName = sourceFileName ?? Path.GetFileName(filePath),
             FileFormat = fileFormat,
@@ -37,7 +38,9 @@ public sealed class StlQualityReportBuilder
             Volume = Math.Abs(geometry.SignedVolume),
             Topology = validation.Topology,
             Validation = validation,
-            IssueHighlights = fileFormat == "stl" ? StlIssueHighlightSampler.Sample(mesh) : null
+            IssueHighlights = includeIssueHighlights
+                ? MeshIssueHighlightSampler.Sample(mesh)
+                : null
         };
     }
 

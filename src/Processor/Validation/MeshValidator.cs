@@ -3,7 +3,7 @@ using Processor.Topology;
 
 namespace Processor.Validation;
 
-public class StlValidator
+public class MeshValidator
 {
     private const double DegenerateRelativeTolerance = 1e-12;
 

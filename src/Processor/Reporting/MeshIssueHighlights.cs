@@ -3,20 +3,19 @@ using Processor.Validation;
 
 namespace Processor.Reporting;
 
-public sealed class StlIssueHighlights
+public sealed class MeshIssueHighlights
 {
     public const int SampleLimit = 100;
-    public Dictionary<string, List<StlIssueHighlight>> Samples { get; init; } = [];
-    public int SampleLimitPerIssue => SampleLimit;
+    public Dictionary<string, List<MeshIssueHighlight>> Samples { get; init; } = [];
 }
 
-public sealed record StlIssueHighlight(Vector3 A, Vector3 B, Vector3? C = null);
+public sealed record MeshIssueHighlight(Vector3 A, Vector3 B, Vector3? C = null);
 
-internal static class StlIssueHighlightSampler
+internal static class MeshIssueHighlightSampler
 {
-    public static StlIssueHighlights Sample(Mesh mesh)
+    public static MeshIssueHighlights Sample(Mesh mesh)
     {
-        var samples = new Dictionary<string, List<StlIssueHighlight>>();
+        var samples = new Dictionary<string, List<MeshIssueHighlight>>();
         var edges = new Dictionary<EdgeKey, List<(int Index, bool Direction)>>();
         var triangles = new Dictionary<TriangleKey, int>();
         for (var index = 0; index < mesh.Triangles.Count; index++)
@@ -55,17 +54,17 @@ internal static class StlIssueHighlightSampler
                 Add(samples, ValidationIssueCodes.InconsistentOrientation, new(edge.A, edge.B));
             }
         }
-        return new StlIssueHighlights { Samples = samples };
+        return new MeshIssueHighlights { Samples = samples };
     }
 
-    private static void Add(Dictionary<string, List<StlIssueHighlight>> samples, string code, StlIssueHighlight sample)
+    private static void Add(Dictionary<string, List<MeshIssueHighlight>> samples, string code, MeshIssueHighlight sample)
     {
         if (!samples.TryGetValue(code, out var values))
         {
             values = [];
             samples.Add(code, values);
         }
-        if (values.Count < StlIssueHighlights.SampleLimit)
+        if (values.Count < MeshIssueHighlights.SampleLimit)
         {
             values.Add(sample);
         }

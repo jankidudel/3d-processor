@@ -11,7 +11,7 @@ public class ValidationReportFormatterTests
     {
         var reportModel = CreateReport(1246, new ValidationResult());
 
-        var report = StlQualityReportFormatter.FormatText(reportModel);
+        var report = MeshQualityReportFormatter.FormatText(reportModel);
 
         Assert.Contains("STL Quality Report", report);
         Assert.Contains("Triangles:                1246", report);
@@ -32,7 +32,7 @@ public class ValidationReportFormatterTests
             ]
         };
 
-        var report = StlQualityReportFormatter.FormatJson(CreateReport(12, validation));
+        var report = MeshQualityReportFormatter.FormatJson(CreateReport(12, validation));
         using var document = JsonDocument.Parse(report);
         var root = document.RootElement;
 
@@ -47,7 +47,7 @@ public class ValidationReportFormatterTests
     [Fact]
     public void FormatJson_ThreeMfReport_ContainsOptionalFormatFields()
     {
-        var report = new StlQualityReport
+        var report = new MeshQualityReport
         {
             FileName = "model.3mf",
             FileSizeBytes = 100,
@@ -59,7 +59,7 @@ public class ValidationReportFormatterTests
             BuildItemCount = 3
         };
 
-        using var document = JsonDocument.Parse(StlQualityReportFormatter.FormatJson(report));
+        using var document = JsonDocument.Parse(MeshQualityReportFormatter.FormatJson(report));
         var root = document.RootElement;
 
         Assert.Equal("3mf", root.GetProperty("fileFormat").GetString());
@@ -71,13 +71,13 @@ public class ValidationReportFormatterTests
     [Fact]
     public void FormatJson_StlReport_ExplicitlyIdentifiesStlFormat()
     {
-        using var document = JsonDocument.Parse(StlQualityReportFormatter.FormatJson(CreateReport(1, new ValidationResult())));
+        using var document = JsonDocument.Parse(MeshQualityReportFormatter.FormatJson(CreateReport(1, new ValidationResult())));
         Assert.Equal("stl", document.RootElement.GetProperty("fileFormat").GetString());
     }
 
-    private static StlQualityReport CreateReport(int triangleCount, ValidationResult validation)
+    private static MeshQualityReport CreateReport(int triangleCount, ValidationResult validation)
     {
-        return new StlQualityReport
+        return new MeshQualityReport
         {
             FileName = "model.stl",
             FileSizeBytes = 100,

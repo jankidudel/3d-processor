@@ -1,8 +1,7 @@
 using System.Text.Json;
 using Amazon.Lambda.SQSEvents;
+using Processor.Formats;
 using Processor.Reporting;
-using Processor.Stl;
-using Processor.ThreeMf;
 
 namespace Processor.Lambda;
 
@@ -36,7 +35,7 @@ internal sealed class ProcessorWorker(
             catch (Exception exception)
             {
                 log?.Invoke($"Processing SQS message {message.MessageId} failed: {exception}");
-                var permanentFailure = exception is StlFormatException or ThreeMfFormatException;
+                var permanentFailure = exception is ModelFormatException;
                 if (permanentFailure || IsFinalAttempt(message))
                 {
                     try
@@ -85,11 +84,9 @@ internal sealed class ProcessorWorker(
             error = new
             {
                 code = "processing_failed",
-                message = exception is ThreeMfFormatException threeMfException
-                    ? ThreeMfFailureMessage(threeMfException)
-                    : exception is StlFormatException
-                        ? "This file is not a valid STL file or is incomplete."
-                        : "The file could not be processed."
+                message = exception is ModelFormatException formatException
+                    ? formatException.ClientMessage
+                    : "The file could not be processed."
             }
         });
         await storage.UploadJsonAsync(
@@ -97,13 +94,6 @@ internal sealed class ProcessorWorker(
             $"{jobsPrefix}{jobId}/failure.json",
             failureJson,
             cancellationToken);
-    }
-
-    private static string ThreeMfFailureMessage(ThreeMfFormatException exception)
-    {
-        return exception.Message.Contains("does not support", StringComparison.Ordinal)
-            ? "This 3MF file uses a feature that InspectMesh does not support yet."
-            : "This 3MF file could not be analysed safely.";
     }
 
     private bool TryGetJobId(string objectKey, out string jobId)
@@ -238,7 +228,7 @@ internal sealed class ProcessorWorker(
             await storage.UploadJsonAsync(
                 bucketName,
                 reportKey,
-                StlQualityReportFormatter.FormatJson(report),
+                MeshQualityReportFormatter.FormatJson(report),
                 cancellationToken);
             log?.Invoke($"Processed s3://{bucketName}/{objectKey} to {reportKey}.");
         }
