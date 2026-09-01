@@ -15,6 +15,11 @@ internal static class MeshIssueHighlightSampler
 {
     public static MeshIssueHighlights Sample(Mesh mesh)
     {
+        return Analyze(mesh).Highlights;
+    }
+
+    public static MeshIssueHighlightAnalysis Analyze(Mesh mesh)
+    {
         var samples = new Dictionary<string, List<MeshIssueHighlight>>();
         var edges = new Dictionary<EdgeKey, List<(int Index, bool Direction)>>();
         var triangles = new Dictionary<TriangleKey, int>();
@@ -39,22 +44,55 @@ internal static class MeshIssueHighlightSampler
             AddEdge(edges, triangle.B, triangle.C, index);
             AddEdge(edges, triangle.C, triangle.A, index);
         }
+        var openEdges = new List<MeshIssueEdgeSegment>();
+        var nonManifoldEdges = new List<MeshIssueEdgeSegment>();
+        var openEdgeCount = 0;
+        var nonManifoldEdgeCount = 0;
         foreach (var (edge, uses) in edges)
         {
             if (uses.Count == 1)
             {
+                openEdgeCount++;
                 Add(samples, ValidationIssueCodes.OpenEdge, new(edge.A, edge.B));
+                AddSegment(openEdges, edge);
             }
             else if (uses.Count > 2)
             {
+                nonManifoldEdgeCount++;
                 Add(samples, ValidationIssueCodes.NonManifoldEdge, new(edge.A, edge.B));
+                AddSegment(nonManifoldEdges, edge);
             }
             else if (uses[0].Direction == uses[1].Direction)
             {
                 Add(samples, ValidationIssueCodes.InconsistentOrientation, new(edge.A, edge.B));
             }
         }
-        return new MeshIssueHighlights { Samples = samples };
+        return new MeshIssueHighlightAnalysis(
+            new MeshIssueHighlights { Samples = samples },
+            new MeshIssueGeometry
+            {
+                OpenEdges = ToSegments(openEdgeCount, openEdges),
+                NonManifoldEdges = ToSegments(nonManifoldEdgeCount, nonManifoldEdges)
+            });
+    }
+
+    private static void AddSegment(List<MeshIssueEdgeSegment> segments, EdgeKey edge)
+    {
+        if (segments.Count < MeshIssueGeometry.SegmentLimit && Finite(edge.A) && Finite(edge.B))
+        {
+            segments.Add(new MeshIssueEdgeSegment(edge.A, edge.B));
+        }
+    }
+
+    private static MeshIssueEdgeSegments ToSegments(int totalCount, List<MeshIssueEdgeSegment> segments)
+    {
+        return new MeshIssueEdgeSegments
+        {
+            TotalCount = totalCount,
+            ReturnedCount = segments.Count,
+            Truncated = totalCount > segments.Count,
+            Segments = segments
+        };
     }
 
     private static void Add(Dictionary<string, List<MeshIssueHighlight>> samples, string code, MeshIssueHighlight sample)
@@ -80,7 +118,8 @@ internal static class MeshIssueHighlightSampler
         }
         uses.Add((index, direction));
     }
-    private static bool Finite(Triangle triangle) => float.IsFinite(triangle.A.X) && float.IsFinite(triangle.A.Y) && float.IsFinite(triangle.A.Z) && float.IsFinite(triangle.B.X) && float.IsFinite(triangle.B.Y) && float.IsFinite(triangle.B.Z) && float.IsFinite(triangle.C.X) && float.IsFinite(triangle.C.Y) && float.IsFinite(triangle.C.Z);
+    private static bool Finite(Triangle triangle) => Finite(triangle.A) && Finite(triangle.B) && Finite(triangle.C);
+    private static bool Finite(Vector3 vector) => float.IsFinite(vector.X) && float.IsFinite(vector.Y) && float.IsFinite(vector.Z);
     private static bool Degenerate(Triangle triangle)
     {
         var ab = Difference(triangle.B, triangle.A); var ac = Difference(triangle.C, triangle.A); var bc = Difference(triangle.C, triangle.B);
@@ -98,3 +137,7 @@ internal static class MeshIssueHighlightSampler
         public static TriangleKey Create(Triangle triangle) { var points = new[] { triangle.A, triangle.B, triangle.C }; Array.Sort(points, Compare); return new(points[0], points[1], points[2]); }
     }
 }
+
+internal sealed record MeshIssueHighlightAnalysis(
+    MeshIssueHighlights Highlights,
+    MeshIssueGeometry Geometry);

@@ -93,6 +93,41 @@ public class MeshQualityReportBuilderTests
             Assert.Equal(3, samples[ValidationIssueCodes.OpenEdge].Count);
             Assert.All(samples.Values, values => Assert.True(values.Count <= MeshIssueHighlights.SampleLimit));
             Assert.Contains("\"issueHighlights\"", MeshQualityReportFormatter.FormatJson(report));
+            var issueGeometry = Assert.IsType<MeshIssueGeometry>(report.IssueGeometry);
+            var openEdges = Assert.IsType<MeshIssueEdgeSegments>(issueGeometry.OpenEdges);
+            Assert.Equal(3, openEdges.TotalCount);
+            Assert.Equal(3, openEdges.ReturnedCount);
+            Assert.False(openEdges.Truncated);
+            Assert.All(openEdges.Segments, edge =>
+            {
+                Assert.True(float.IsFinite(edge.Start.X));
+                Assert.True(float.IsFinite(edge.End.X));
+            });
+        }
+        finally
+        {
+            File.Delete(filePath);
+        }
+    }
+
+    [Fact]
+    public void Build_ManyOpenEdges_CapsExactSegmentsWithoutChangingTheTotal()
+    {
+        var filePath = Path.GetTempFileName();
+        try
+        {
+            var mesh = new Mesh();
+            for (var i = 0; i < 1_667; i++)
+            {
+                var x = i * 3f;
+                mesh.Triangles.Add(new Triangle(
+                    new Vector3(0, 0, 0), new Vector3(x, 0, 0), new Vector3(x + 1, 0, 0), new Vector3(x, 1, 0)));
+            }
+            var report = new MeshQualityReportBuilder().Build(filePath, mesh, new MeshValidator().Validate(mesh));
+            var openEdges = Assert.IsType<MeshIssueGeometry>(report.IssueGeometry).OpenEdges!;
+            Assert.Equal(5_001, openEdges.TotalCount);
+            Assert.Equal(MeshIssueGeometry.SegmentLimit, openEdges.ReturnedCount);
+            Assert.True(openEdges.Truncated);
         }
         finally
         {

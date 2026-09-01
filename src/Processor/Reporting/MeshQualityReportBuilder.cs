@@ -17,6 +17,9 @@ public sealed class MeshQualityReportBuilder
         bool includeIssueHighlights = true)
     {
         var geometry = CalculateGeometry(mesh);
+        var issueAnalysis = includeIssueHighlights
+            ? MeshIssueHighlightSampler.Analyze(mesh)
+            : null;
 
         return new MeshQualityReport
         {
@@ -38,9 +41,8 @@ public sealed class MeshQualityReportBuilder
             Volume = Math.Abs(geometry.SignedVolume),
             Topology = validation.Topology,
             Validation = validation,
-            IssueHighlights = includeIssueHighlights
-                ? MeshIssueHighlightSampler.Sample(mesh)
-                : null
+            IssueHighlights = issueAnalysis?.Highlights,
+            IssueGeometry = issueAnalysis?.Geometry
         };
     }
 

@@ -20,4 +20,6 @@ public sealed class MeshQualityReport
     public MeshTopology Topology { get; init; } = new();
     public ValidationResult Validation { get; init; } = new();
     public MeshIssueHighlights? IssueHighlights { get; init; }
+    /// <summary>Bounded, exact edge segments that a client can draw over the source mesh.</summary>
+    public MeshIssueGeometry? IssueGeometry { get; init; }
 }
