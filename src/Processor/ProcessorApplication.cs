@@ -55,7 +55,7 @@ public class ProcessorApplication
                 document.SourceUnit,
                 document.ModelObjectCount,
                 document.BuildItemCount,
-                includeIssueHighlights: false);
+                highlightMeshes: document.BuildItemMeshes);
         }
         var mesh = new StlReader().Read(filePath);
         var stlValidation = new MeshValidator().Validate(mesh);

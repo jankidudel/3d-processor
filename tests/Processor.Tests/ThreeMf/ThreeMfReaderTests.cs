@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using Processor.Models;
+using Processor.Reporting;
 using Processor.ThreeMf;
 
 namespace Processor.Tests.ThreeMf;
@@ -253,6 +254,43 @@ public sealed class ThreeMfReaderTests
         var validation = ThreeMfValidationAggregator.ValidateBuildItems([first, second]);
 
         Assert.Equal(0, validation.CountIssues("duplicate_triangle"));
+    }
+
+    [Fact]
+    public void BuildReport_SamplesOpenEdgesForEveryResolvedRotatedBuildItem()
+    {
+        var path = CreatePackage("""
+            <model xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"><resources>
+              <object id="1"><mesh><vertices><vertex x="0" y="0" z="0"/><vertex x="1" y="0" z="0"/><vertex x="0" y="1" z="0"/></vertices><triangles><triangle v1="0" v2="1" v3="2"/></triangles></mesh></object>
+            </resources><build>
+              <item objectid="1" transform="1 0 0 10 0 1 0 0 0 0 1 0"/>
+              <item objectid="1" transform="0 -1 0 0 1 0 0 20 0 0 1 0"/>
+            </build></model>
+            """);
+        try
+        {
+            var document = new ThreeMfReader().Read(path);
+            var report = new MeshQualityReportBuilder().Build(
+                path,
+                document.Mesh,
+                ThreeMfValidationAggregator.ValidateBuildItems(document.BuildItemMeshes),
+                fileFormat: "3mf",
+                highlightMeshes: document.BuildItemMeshes);
+
+            var edges = Assert.IsType<MeshIssueGeometry>(report.IssueGeometry).OpenEdges!;
+            Assert.Equal(6, edges.TotalCount);
+            Assert.Equal(6, edges.ReturnedCount);
+            Assert.False(edges.Truncated);
+            Assert.Contains(edges.Segments, edge => edge.Start.X >= 10 || edge.End.X >= 10);
+            Assert.Contains(edges.Segments, edge => edge.Start.Y >= 20 || edge.End.Y >= 20);
+            var json = MeshQualityReportFormatter.FormatJson(report);
+            Assert.Contains("\"issueGeometry\"", json);
+            Assert.Contains("\"totalCount\": 6", json);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 
     [Fact]

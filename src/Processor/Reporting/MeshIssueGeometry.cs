@@ -4,6 +4,7 @@ namespace Processor.Reporting;
 
 public sealed class MeshIssueGeometry
 {
+    /// <summary>Maximum returned line segments for each issue type.</summary>
     public const int SegmentLimit = 5_000;
 
     public string Version { get; init; } = "1.0";

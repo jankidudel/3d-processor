@@ -14,11 +14,13 @@ public sealed class MeshQualityReportBuilder
         string? sourceUnit = null,
         int? modelObjectCount = null,
         int? buildItemCount = null,
-        bool includeIssueHighlights = true)
+        bool includeIssueHighlights = true,
+        IReadOnlyList<Mesh>? highlightMeshes = null)
     {
         var geometry = CalculateGeometry(mesh);
+        var meshesForHighlights = highlightMeshes ?? [mesh];
         var issueAnalysis = includeIssueHighlights
-            ? MeshIssueHighlightSampler.Analyze(mesh)
+            ? MeshIssueHighlightSampler.Analyze(meshesForHighlights)
             : null;
 
         return new MeshQualityReport

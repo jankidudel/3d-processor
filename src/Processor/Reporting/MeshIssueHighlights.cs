@@ -76,6 +76,68 @@ internal static class MeshIssueHighlightSampler
             });
     }
 
+    /// <summary>
+    /// Samples every supplied mesh independently. Coincident edges in separate
+    /// meshes remain separate diagnostic markers, matching aggregate topology
+    /// reports that validate each mesh independently.
+    /// </summary>
+    public static MeshIssueHighlightAnalysis Analyze(IEnumerable<Mesh> meshes)
+    {
+        var highlights = new Dictionary<string, List<MeshIssueHighlight>>();
+        var openEdges = new List<MeshIssueEdgeSegment>();
+        var nonManifoldEdges = new List<MeshIssueEdgeSegment>();
+        var openEdgeCount = 0;
+        var nonManifoldEdgeCount = 0;
+
+        foreach (var mesh in meshes)
+        {
+            var analysis = Analyze(mesh);
+            AppendHighlights(highlights, analysis.Highlights.Samples);
+            AppendSegments(openEdges, analysis.Geometry.OpenEdges, ref openEdgeCount);
+            AppendSegments(nonManifoldEdges, analysis.Geometry.NonManifoldEdges, ref nonManifoldEdgeCount);
+        }
+
+        return new MeshIssueHighlightAnalysis(
+            new MeshIssueHighlights { Samples = highlights },
+            new MeshIssueGeometry
+            {
+                OpenEdges = ToSegments(openEdgeCount, openEdges),
+                NonManifoldEdges = ToSegments(nonManifoldEdgeCount, nonManifoldEdges)
+            });
+    }
+
+    private static void AppendHighlights(
+        Dictionary<string, List<MeshIssueHighlight>> destination,
+        Dictionary<string, List<MeshIssueHighlight>> source)
+    {
+        foreach (var (code, samples) in source)
+        {
+            foreach (var sample in samples)
+            {
+                Add(destination, code, sample);
+            }
+        }
+    }
+
+    private static void AppendSegments(
+        List<MeshIssueEdgeSegment> destination,
+        MeshIssueEdgeSegments? source,
+        ref int totalCount)
+    {
+        if (source is null)
+        {
+            return;
+        }
+        totalCount += source.TotalCount;
+        foreach (var segment in source.Segments)
+        {
+            if (destination.Count < MeshIssueGeometry.SegmentLimit)
+            {
+                destination.Add(segment);
+            }
+        }
+    }
+
     private static void AddSegment(List<MeshIssueEdgeSegment> segments, EdgeKey edge)
     {
         if (segments.Count < MeshIssueGeometry.SegmentLimit && Finite(edge.A) && Finite(edge.B))
