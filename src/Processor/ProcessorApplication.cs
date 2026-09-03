@@ -62,4 +62,58 @@ public class ProcessorApplication
 
         return new MeshQualityReportBuilder().Build(filePath, mesh, stlValidation, sourceFileName, "stl");
     }
+
+    public StlRepairReport RepairStl(string filePath, string sourceFileName, string outputPath)
+    {
+        var mesh = new StlReader().Read(filePath);
+        var validator = new MeshValidator();
+        var reportBuilder = new MeshQualityReportBuilder();
+        var before = reportBuilder.Build(filePath, mesh, validator.Validate(mesh), sourceFileName, "stl");
+        var result = new StlSafeRepairer().Repair(mesh);
+        if (result.CleanedMesh is null)
+        {
+            return new StlRepairReport
+            {
+                Before = before,
+                DuplicateTrianglesRemoved = result.DuplicatesRemoved,
+                DegenerateTrianglesRemoved = result.DegeneratesRemoved,
+                OrientationsCorrected = result.OrientationsCorrected,
+                SkippedReasons = result.SkippedReasons
+            };
+        }
+
+        BinaryStlWriter.Write(outputPath, result.CleanedMesh.Triangles);
+        var after = Process(outputPath, Path.GetFileName(outputPath));
+        if (!DimensionsMatch(before, after))
+        {
+            File.Delete(outputPath);
+            throw new InvalidOperationException("Safe repair changed the model dimensions.");
+        }
+
+        return new StlRepairReport
+        {
+            Before = before,
+            After = after,
+            DuplicateTrianglesRemoved = result.DuplicatesRemoved,
+            DegenerateTrianglesRemoved = result.DegeneratesRemoved,
+            OrientationsCorrected = result.OrientationsCorrected,
+            SkippedReasons = result.SkippedReasons,
+            HasCleanedFile = true,
+            IsFullyValid = after.Validation.IsValid,
+            CleanedFileName = Path.GetFileName(outputPath)
+        };
+    }
+
+    private static bool DimensionsMatch(MeshQualityReport before, MeshQualityReport after)
+    {
+        const double relativeTolerance = 1e-6;
+        return Matches(before.Dimensions.Width, after.Dimensions.Width) &&
+               Matches(before.Dimensions.Height, after.Dimensions.Height) &&
+               Matches(before.Dimensions.Depth, after.Dimensions.Depth);
+
+        static bool Matches(double left, double right)
+        {
+            return Math.Abs(left - right) <= relativeTolerance * Math.Max(1, Math.Max(Math.Abs(left), Math.Abs(right)));
+        }
+    }
 }

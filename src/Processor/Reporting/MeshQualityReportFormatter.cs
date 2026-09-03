@@ -44,6 +44,11 @@ public static class MeshQualityReportFormatter
         return JsonSerializer.Serialize(report, JsonOptions);
     }
 
+    public static string FormatJson(StlRepairReport report)
+    {
+        return JsonSerializer.Serialize(report, JsonOptions);
+    }
+
     private static int Count(MeshQualityReport report, string code)
     {
         return report.Validation.CountIssues(code);

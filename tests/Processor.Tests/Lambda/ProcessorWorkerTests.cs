@@ -305,6 +305,7 @@ public class ProcessorWorkerTests
     private sealed class FakeObjectStorage(string sourceFilePath) : IObjectStorage
     {
         public List<Upload> Uploads { get; } = [];
+        public List<FileUpload> FileUploads { get; } = [];
         public int DownloadCount { get; private set; }
         public long ObjectSize { get; init; } = new FileInfo(sourceFilePath).Length;
 
@@ -336,7 +337,19 @@ public class ProcessorWorkerTests
             Uploads.Add(new Upload(bucketName, objectKey, json));
             return Task.CompletedTask;
         }
+
+        public Task UploadFileAsync(
+            string bucketName,
+            string objectKey,
+            string filePath,
+            string contentType,
+            CancellationToken cancellationToken = default)
+        {
+            FileUploads.Add(new FileUpload(bucketName, objectKey, contentType, File.ReadAllBytes(filePath)));
+            return Task.CompletedTask;
+        }
     }
 
     private sealed record Upload(string BucketName, string ObjectKey, string Json);
+    private sealed record FileUpload(string BucketName, string ObjectKey, string ContentType, byte[] Contents);
 }

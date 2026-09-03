@@ -46,4 +46,23 @@ internal sealed class S3ObjectStorage(IAmazonS3 client) : IObjectStorage
             },
             cancellationToken);
     }
+
+    public async Task UploadFileAsync(
+        string bucketName,
+        string objectKey,
+        string filePath,
+        string contentType,
+        CancellationToken cancellationToken = default)
+    {
+        await using var content = File.OpenRead(filePath);
+        await client.PutObjectAsync(
+            new PutObjectRequest
+            {
+                BucketName = bucketName,
+                Key = objectKey,
+                InputStream = content,
+                ContentType = contentType
+            },
+            cancellationToken);
+    }
 }

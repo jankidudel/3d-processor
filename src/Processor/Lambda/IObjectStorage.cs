@@ -18,4 +18,11 @@ internal interface IObjectStorage
         string objectKey,
         string json,
         CancellationToken cancellationToken = default);
+
+    Task UploadFileAsync(
+        string bucketName,
+        string objectKey,
+        string filePath,
+        string contentType,
+        CancellationToken cancellationToken = default);
 }
