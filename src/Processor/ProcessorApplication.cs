@@ -63,6 +63,43 @@ public class ProcessorApplication
         return new MeshQualityReportBuilder().Build(filePath, mesh, stlValidation, sourceFileName, "stl");
     }
 
+    public ThreeMfQualityCheckerReport ProcessThreeMfQualityChecker(string filePath, string? sourceFileName = null)
+    {
+        var document = new ThreeMfReader().Read(filePath);
+        var builder = new MeshQualityReportBuilder();
+        var models = document.BuildItemMeshes.Select((mesh, index) =>
+        {
+            var validation = new MeshValidator().Validate(mesh);
+            var report = builder.Build(filePath, mesh, validation, sourceFileName, "3mf", document.SourceUnit,
+                includeIssueHighlights: false);
+            return new ThreeMfQualityModelReport
+            {
+                ModelIndex = index,
+                Name = $"Model {index + 1}",
+                TriangleCount = report.TriangleCount,
+                Dimensions = report.Dimensions,
+                Unit = document.SourceUnit,
+                Validation = validation
+            };
+        }).ToList();
+        var validation = ThreeMfValidationAggregator.ValidateBuildItems(document.BuildItemMeshes);
+        return new ThreeMfQualityCheckerReport
+        {
+            FileName = sourceFileName ?? Path.GetFileName(filePath),
+            FileSizeBytes = new FileInfo(filePath).Length,
+            IsValid = validation.IsValid,
+            Validation = validation,
+            Models = models,
+            Summary = new ThreeMfQualitySummary
+            {
+                ResolvedModelCount = models.Count,
+                TriangleCount = models.Sum(model => model.TriangleCount),
+                ErrorCount = validation.Issues.Where(issue => issue.Severity == ValidationIssueSeverity.Error).Sum(issue => issue.Count),
+                WarningCount = validation.Issues.Where(issue => issue.Severity == ValidationIssueSeverity.Warning).Sum(issue => issue.Count)
+            }
+        };
+    }
+
     public StlRepairReport RepairStl(string filePath, string sourceFileName, string outputPath)
     {
         var mesh = new StlReader().Read(filePath);

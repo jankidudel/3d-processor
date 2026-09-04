@@ -224,9 +224,12 @@ internal sealed class ProcessorWorker(
             }
 
             var isRepair = string.Equals(fileName, "repair.stl", StringComparison.Ordinal);
-            var report = isRepair
+            var isThreeMfQualityChecker = string.Equals(fileName, "3mf_quality_checker.3mf", StringComparison.Ordinal);
+            object? report = isRepair
                 ? null
-                : processor.Process(temporaryPath, fileName);
+                : isThreeMfQualityChecker
+                    ? processor.ProcessThreeMfQualityChecker(temporaryPath, fileName)
+                    : processor.Process(temporaryPath, fileName);
             var repairOutputPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}-cleaned.stl");
             var repairReport = isRepair
                 ? processor.RepairStl(temporaryPath, fileName, repairOutputPath)
@@ -259,7 +262,7 @@ internal sealed class ProcessorWorker(
 
     private static bool IsSupportedInputName(string name)
     {
-        return name is "input.stl" or "input.3mf" or "repair.stl";
+        return name is "input.stl" or "input.3mf" or "repair.stl" or "3mf_quality_checker.3mf";
     }
 
     private static string DecodeObjectKey(string objectKey)
