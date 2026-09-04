@@ -19,6 +19,32 @@ internal sealed class ProcessorWorker(
         PropertyNameCaseInsensitive = true
     };
 
+    // Register format-specific repair handlers here. Adding a format requires a
+    // registration, not another branch in the worker's processing flow.
+    private static readonly IReadOnlyDictionary<string, RepairHandler> RepairHandlers =
+
+         new Dictionary<string, RepairHandler>(StringComparer.Ordinal)
+         {
+             ["repair.stl"] = new(
+                "model/stl",
+                (processor, inputPath, sourceFileName, outputPath) =>
+                {
+                    var report = processor.RepairStl(inputPath, sourceFileName, outputPath);
+                    return new RepairArtifact(
+                        report.HasCleanedFile,
+                        MeshQualityReportFormatter.FormatJson(report));
+                }),
+             ["repair.3mf"] = new(
+                "application/vnd.ms-3mfdocument",
+                (processor, inputPath, sourceFileName, outputPath) =>
+                {
+                    var report = processor.RepairThreeMf(inputPath, sourceFileName, outputPath);
+                    return new RepairArtifact(
+                        report.Repair.RepairedFileAvailable,
+                        MeshQualityReportFormatter.FormatJson(report));
+                })
+         };
+
     public async Task<SQSBatchResponse> ProcessAsync(
         SQSEvent sqsEvent,
         Action<string>? log = null,
@@ -223,29 +249,35 @@ internal sealed class ProcessorWorker(
                     cancellationToken);
             }
 
-            var isRepair = string.Equals(fileName, "repair.stl", StringComparison.Ordinal);
-            var report = isRepair
-                ? null
-                : processor.Process(temporaryPath, fileName);
-            var repairOutputPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}-cleaned.stl");
-            var repairReport = isRepair
-                ? processor.RepairStl(temporaryPath, fileName, repairOutputPath)
-                : null;
+            var isRepair = RepairHandlers.TryGetValue(fileName, out var repairHandler);
+            var repairOutputPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}-cleaned{Path.GetExtension(fileName)}");
+            RepairArtifact? repairArtifact = null;
+            MeshQualityReport? report = null;
+            if (isRepair)
+            {
+                repairArtifact = repairHandler!.Invoke(
+                    processor,
+                    temporaryPath,
+                    fileName,
+                    repairOutputPath);
+            }
+            else
+            {
+                report = processor.Process(temporaryPath, fileName);
+            }
             var reportKey = $"{jobsPrefix}{jobId}/report.json";
             await storage.UploadJsonAsync(
                 bucketName,
                 reportKey,
-                repairReport is not null
-                    ? MeshQualityReportFormatter.FormatJson(repairReport)
-                    : MeshQualityReportFormatter.FormatJson(report!),
+                repairArtifact?.ReportJson ?? MeshQualityReportFormatter.FormatJson(report!),
                 cancellationToken);
-            if (repairReport?.HasCleanedFile == true)
+            if (repairArtifact is { HasOutputFile: true })
             {
                 await storage.UploadFileAsync(
                     bucketName,
-                    $"{jobsPrefix}{jobId}/cleaned.stl",
+                    $"{jobsPrefix}{jobId}/cleaned{Path.GetExtension(fileName)}",
                     repairOutputPath,
-                    "model/stl",
+                    repairHandler!.OutputContentType,
                     cancellationToken);
             }
             File.Delete(repairOutputPath);
@@ -259,11 +291,27 @@ internal sealed class ProcessorWorker(
 
     private static bool IsSupportedInputName(string name)
     {
-        return name is "input.stl" or "input.3mf" or "repair.stl";
+        return name is "input.stl" or "input.3mf" || RepairHandlers.ContainsKey(name);
     }
 
     private static string DecodeObjectKey(string objectKey)
     {
         return Uri.UnescapeDataString(objectKey.Replace('+', ' '));
     }
+
+    private sealed record RepairHandler(
+        string OutputContentType,
+        Func<ProcessorApplication, string, string, string, RepairArtifact> Run)
+    {
+        public RepairArtifact Invoke(
+            ProcessorApplication processor,
+            string inputPath,
+            string sourceFileName,
+            string outputPath)
+        {
+            return Run(processor, inputPath, sourceFileName, outputPath);
+        }
+    }
+
+    private sealed record RepairArtifact(bool HasOutputFile, string ReportJson);
 }

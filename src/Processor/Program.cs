@@ -1,4 +1,4 @@
-﻿namespace Processor;
+namespace Processor;
 
 public class Program
 {

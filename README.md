@@ -102,7 +102,12 @@ Activate the repository's versioned pre-commit hook once after cloning:
 git config core.hooksPath .githooks
 ```
 
-The hook runs `dotnet test 3d-processor.slnx --no-restore`, including the integration tests. The current fixtures are small enough that running both groups before each commit remains practical. Run `dotnet restore 3d-processor.slnx` at least once after cloning or after package changes.
+The hook runs `dotnet format 3d-processor.slnx --no-restore` and then
+`dotnet test 3d-processor.slnx --no-restore`, including the integration tests.
+If formatting changes files, the commit is stopped so you can review and stage
+them. The current fixtures are small enough that running both groups before each
+commit remains practical. Run `dotnet restore 3d-processor.slnx` at least once
+after cloning or after package changes.
 
 ## Package for AWS Lambda
 

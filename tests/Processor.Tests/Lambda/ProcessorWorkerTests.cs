@@ -306,7 +306,10 @@ public class ProcessorWorkerTests
     {
         public List<Upload> Uploads { get; } = [];
         public List<FileUpload> FileUploads { get; } = [];
-        public int DownloadCount { get; private set; }
+        public int DownloadCount
+        {
+            get; private set;
+        }
         public long ObjectSize { get; init; } = new FileInfo(sourceFilePath).Length;
 
         public Task<long> GetSizeAsync(

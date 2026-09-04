@@ -16,7 +16,7 @@ public static class MeshQualityReportFormatter
     {
         return FormattableString.Invariant($$"""
             STL Quality Report
-
+ 
             File:                     {{report.FileName}}
             File size:                {{report.FileSizeBytes}} bytes
             Triangles:                {{report.TriangleCount}}
@@ -48,6 +48,8 @@ public static class MeshQualityReportFormatter
     {
         return JsonSerializer.Serialize(report, JsonOptions);
     }
+
+    public static string FormatJson(ThreeMfRepairReport report) => JsonSerializer.Serialize(report, JsonOptions);
 
     private static int Count(MeshQualityReport report, string code)
     {

@@ -104,6 +104,22 @@ public class ProcessorApplication
         };
     }
 
+    public ThreeMfRepairReport RepairThreeMf(string filePath, string sourceFileName, string outputPath)
+    {
+        var before = Process(filePath, sourceFileName);
+        var repair = new ThreeMfSafeRepairer().Repair(filePath, outputPath);
+        var after = Process(outputPath, Path.GetFileName(outputPath));
+        return new ThreeMfRepairReport
+        {
+            FileName = sourceFileName,
+            FileSizeBytes = new FileInfo(filePath).Length,
+            BeforeValidation = before,
+            AfterValidation = after,
+            Repair = new ThreeMfRepairSummary { RepairedFileAvailable = true, ModelsProcessed = repair.ModelsProcessed, TrianglesBefore = repair.TrianglesBefore, TrianglesAfter = repair.TrianglesAfter, DegenerateTrianglesRemoved = repair.DegenerateTrianglesRemoved, DuplicateTrianglesRemoved = repair.DuplicateTrianglesRemoved, InvalidIndexTrianglesRemoved = repair.InvalidIndexTrianglesRemoved, OrientationFixesApplied = repair.OrientationFixesApplied },
+            Warnings = after.Validation.Issues.Where(issue => issue.Severity != "error").Select(issue => issue.Message).Distinct().ToArray()
+        };
+    }
+
     private static bool DimensionsMatch(MeshQualityReport before, MeshQualityReport after)
     {
         const double relativeTolerance = 1e-6;

@@ -85,7 +85,9 @@ public sealed class ThreeMfReaderTests
     public void Read_RejectsPackageWithoutRootRelationships()
     {
         var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.3mf");
-        using (ZipFile.Open(path, ZipArchiveMode.Create)) { }
+        using (ZipFile.Open(path, ZipArchiveMode.Create))
+        {
+        }
         try
         {
             Assert.Throws<ThreeMfFormatException>(() => new ThreeMfReader().Read(path));

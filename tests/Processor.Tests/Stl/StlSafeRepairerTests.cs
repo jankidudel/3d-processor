@@ -10,7 +10,11 @@ public sealed class StlSafeRepairerTests
     public void Removes_duplicate_and_degenerate_triangles_without_changing_tetrahedron_bounds()
     {
         var mesh = Tetrahedron();
-        mesh.Triangles.Add(mesh.Triangles[0] with { B = mesh.Triangles[0].C, C = mesh.Triangles[0].B });
+        mesh.Triangles.Add(mesh.Triangles[0] with
+        {
+            B = mesh.Triangles[0].C,
+            C = mesh.Triangles[0].B
+        });
         mesh.Triangles.Add(new Triangle(new Vector3(0, 0, 0), new Vector3(0, 0, 0), new Vector3(0, 0, 0), new Vector3(1, 0, 0)));
 
         var result = new StlSafeRepairer().Repair(mesh);

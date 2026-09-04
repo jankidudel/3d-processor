@@ -1,4 +1,13 @@
 #!/bin/sh
 set -eu
 
+before_format=$(git diff --binary | git hash-object --stdin)
+dotnet format 3d-processor.slnx --no-restore
+after_format=$(git diff --binary | git hash-object --stdin)
+
+if [ "$before_format" != "$after_format" ]; then
+  echo ".NET formatting was applied. Review and stage the changes, then commit again."
+  exit 1
+fi
+
 dotnet test 3d-processor.slnx --no-restore --nologo

@@ -167,7 +167,11 @@ public sealed class StlSafeRepairer
     private static int Compare(Vector3 left, Vector3 right)
     {
         var comparison = left.X.CompareTo(right.X);
-        if (comparison != 0) return comparison;
+        if (comparison != 0)
+        {
+            return comparison;
+        }
+
         comparison = left.Y.CompareTo(right.Y);
         return comparison != 0 ? comparison : left.Z.CompareTo(right.Z);
     }

@@ -184,19 +184,37 @@ internal static class MeshIssueHighlightSampler
     private static bool Finite(Vector3 vector) => float.IsFinite(vector.X) && float.IsFinite(vector.Y) && float.IsFinite(vector.Z);
     private static bool Degenerate(Triangle triangle)
     {
-        var ab = Difference(triangle.B, triangle.A); var ac = Difference(triangle.C, triangle.A); var bc = Difference(triangle.C, triangle.B);
-        var crossX = ab.X * ac.Z - ab.Z * ac.Y; var crossY = ab.Z * ac.X - ab.X * ac.Z; var crossZ = ab.X * ac.Y - ab.Y * ac.X;
+        var ab = Difference(triangle.B, triangle.A);
+        var ac = Difference(triangle.C, triangle.A);
+        var bc = Difference(triangle.C, triangle.B);
+        var crossX = ab.X * ac.Z - ab.Z * ac.Y;
+        var crossY = ab.Z * ac.X - ab.X * ac.Z;
+        var crossZ = ab.X * ac.Y - ab.Y * ac.X;
         var area = crossX * crossX + crossY * crossY + crossZ * crossZ;
         var longest = Math.Max(LengthSquared(ab), Math.Max(LengthSquared(ac), LengthSquared(bc)));
         return area <= 1e-12 * longest * longest;
     }
     private static (double X, double Y, double Z) Difference(Vector3 first, Vector3 second) => ((double)first.X - second.X, (double)first.Y - second.Y, (double)first.Z - second.Z);
     private static double LengthSquared((double X, double Y, double Z) value) => value.X * value.X + value.Y * value.Y + value.Z * value.Z;
-    private static int Compare(Vector3 left, Vector3 right) { var result = left.X.CompareTo(right.X); if (result != 0) { return result; } result = left.Y.CompareTo(right.Y); return result != 0 ? result : left.Z.CompareTo(right.Z); }
+    private static int Compare(Vector3 left, Vector3 right)
+    {
+        var result = left.X.CompareTo(right.X);
+        if (result != 0)
+        {
+            return result;
+        }
+        result = left.Y.CompareTo(right.Y);
+        return result != 0 ? result : left.Z.CompareTo(right.Z);
+    }
     private readonly record struct EdgeKey(Vector3 A, Vector3 B);
     private readonly record struct TriangleKey(Vector3 A, Vector3 B, Vector3 C)
     {
-        public static TriangleKey Create(Triangle triangle) { var points = new[] { triangle.A, triangle.B, triangle.C }; Array.Sort(points, Compare); return new(points[0], points[1], points[2]); }
+        public static TriangleKey Create(Triangle triangle)
+        {
+            var points = new[] { triangle.A, triangle.B, triangle.C };
+            Array.Sort(points, Compare);
+            return new(points[0], points[1], points[2]);
+        }
     }
 }
 

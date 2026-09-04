@@ -1,11 +1,11 @@
 {
-  "editor.renderWhitespace": "all",
   "[csharp]": {
     "editor.defaultFormatter": "ms-dotnettools.csharp",
-    "editor.detectIndentation": true,
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "always"
+    }
   },
-  "[markdown]": {
-    "editor.formatOnSave": false
-  }
+  "dotnet.defaultSolution": "3d-processor.slnx"
 }

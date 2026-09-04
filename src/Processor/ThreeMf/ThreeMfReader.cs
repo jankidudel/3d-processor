@@ -186,12 +186,21 @@ public sealed class ThreeMfReader
         private float Determinant => M00 * (M11 * M22 - M12 * M21) - M01 * (M10 * M22 - M12 * M20) + M02 * (M10 * M21 - M11 * M20);
         public static Transform Parse(string? text)
         {
-            if (string.IsNullOrWhiteSpace(text)) { return Identity; }
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return Identity;
+            }
             var values = text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Select(ParseFloat).ToArray();
-            if (values.Length != 12) { throw new ThreeMfFormatException("This 3MF file contains an invalid transform."); }
+            if (values.Length != 12)
+            {
+                throw new ThreeMfFormatException("This 3MF file contains an invalid transform.");
+            }
             var result = new Transform(values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8], values[9], values[10], values[11]);
             var determinant = result.Determinant;
-            if (!float.IsFinite(determinant) || Math.Abs(determinant) < 1e-12f) { throw new ThreeMfFormatException("This 3MF file contains an invalid transform."); }
+            if (!float.IsFinite(determinant) || Math.Abs(determinant) < 1e-12f)
+            {
+                throw new ThreeMfFormatException("This 3MF file contains an invalid transform.");
+            }
             return result;
         }
         public Vector3 Apply(Vector3 value) => new(M00 * value.X + M01 * value.Y + M02 * value.Z + M03, M10 * value.X + M11 * value.Y + M12 * value.Z + M13, M20 * value.X + M21 * value.Y + M22 * value.Z + M23);
