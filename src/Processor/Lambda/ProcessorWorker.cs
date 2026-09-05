@@ -237,10 +237,22 @@ internal sealed class ProcessorWorker(
             }
 
             var isRepair = RepairHandlers.TryGetValue(fileName, out var repairHandler);
+            var splitOptions = fileName == "split.stl" ? await ReadSplitOptionsAsync(jobId, cancellationToken) : null;
             var repairOutputPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}-cleaned{Path.GetExtension(fileName)}");
             RepairArtifact? repairArtifact = null;
             MeshQualityReport? report = null;
-            if (isRepair)
+            if (splitOptions is not null)
+            {
+                var partAPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}-part-a.stl");
+                var partBPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}-part-b.stl");
+                var splitReport = processor.SplitStl(temporaryPath, splitOptions.FileName, splitOptions.Axis, splitOptions.PositionPercent, partAPath, partBPath);
+                repairArtifact = new RepairArtifact(true, MeshQualityReportFormatter.FormatJson(splitReport));
+                await storage.UploadFileAsync(bucketName, $"{jobsPrefix}{jobId}/{OutputFolder}/part-a.stl", partAPath, "model/stl", cancellationToken);
+                await storage.UploadFileAsync(bucketName, $"{jobsPrefix}{jobId}/{OutputFolder}/part-b.stl", partBPath, "model/stl", cancellationToken);
+                File.Delete(partAPath);
+                File.Delete(partBPath);
+            }
+            else if (isRepair)
             {
                 repairArtifact = repairHandler!.Invoke(
                     processor,
@@ -258,7 +270,7 @@ internal sealed class ProcessorWorker(
                 reportKey,
                 repairArtifact?.ReportJson ?? MeshQualityReportFormatter.FormatJson(report!),
                 cancellationToken);
-            if (repairArtifact is { HasOutputFile: true })
+            if (repairArtifact is { HasOutputFile: true } && splitOptions is null)
             {
                 await storage.UploadFileAsync(
                     bucketName,
@@ -278,7 +290,25 @@ internal sealed class ProcessorWorker(
 
     private static bool IsSupportedInputName(string name)
     {
-        return name is "input.stl" or "input.3mf" || RepairHandlers.ContainsKey(name);
+        return name is "input.stl" or "input.3mf" or "split.stl" || RepairHandlers.ContainsKey(name);
+    }
+
+    private async Task<SplitOptions?> ReadSplitOptionsAsync(string jobId, CancellationToken cancellationToken)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}-metadata.json");
+        try
+        {
+            await using var target = File.Create(path);
+            await storage.DownloadAsync(bucketName, $"{jobsPrefix}{jobId}/metadata.json", target, cancellationToken);
+            await target.FlushAsync(cancellationToken);
+            var metadata = JsonSerializer.Deserialize<SplitMetadata>(await File.ReadAllTextAsync(path, cancellationToken), JsonOptions);
+            if (metadata?.Operation != "stl_split" || !Enum.TryParse<Stl.SplitAxis>(metadata.SplitAxis, out var axis))
+            {
+                return null;
+            }
+            return new SplitOptions(metadata.FileName ?? "model.stl", axis, metadata.SplitPositionPercent);
+        }
+        finally { File.Delete(path); }
     }
 
     private static string DecodeObjectKey(string objectKey)
@@ -301,4 +331,24 @@ internal sealed class ProcessorWorker(
     }
 
     private sealed record RepairArtifact(bool HasOutputFile, string ReportJson);
+    private sealed record SplitOptions(string FileName, Stl.SplitAxis Axis, double PositionPercent);
+    private sealed class SplitMetadata
+    {
+        public string? FileName
+        {
+            get; init;
+        }
+        public string? Operation
+        {
+            get; init;
+        }
+        public string? SplitAxis
+        {
+            get; init;
+        }
+        public double SplitPositionPercent
+        {
+            get; init;
+        }
+    }
 }

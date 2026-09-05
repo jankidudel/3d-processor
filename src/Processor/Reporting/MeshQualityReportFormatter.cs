@@ -50,6 +50,7 @@ public static class MeshQualityReportFormatter
     }
 
     public static string FormatJson(ThreeMfRepairReport report) => JsonSerializer.Serialize(report, JsonOptions);
+    public static string FormatJson(StlSplitReport report) => JsonSerializer.Serialize(report, JsonOptions);
 
     private static int Count(MeshQualityReport report, string code)
     {

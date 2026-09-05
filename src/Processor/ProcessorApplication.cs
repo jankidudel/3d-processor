@@ -104,6 +104,59 @@ public class ProcessorApplication
         };
     }
 
+    public StlSplitReport SplitStl(string filePath, string sourceFileName, SplitAxis axis, double positionPercent, string partAPath, string partBPath)
+    {
+        var mesh = new StlReader().Read(filePath);
+        var validator = new MeshValidator();
+        var inputValidation = validator.Validate(mesh);
+        if (!inputValidation.IsValid)
+        {
+            throw new SplitException("This STL must be closed, manifold and valid before it can be split. Check it with the STL Quality, Watertight or Manifold Checker, or use STL Repair where appropriate.");
+        }
+        var points = mesh.Triangles.SelectMany(triangle => new[] { triangle.A, triangle.B, triangle.C }).ToArray();
+        var coordinates = points.Select(point => axis switch { SplitAxis.X => (double)point.X, SplitAxis.Y => point.Y, _ => point.Z }).ToArray();
+        var minimum = coordinates.Min();
+        var maximum = coordinates.Max();
+        if (positionPercent <= 0 || positionPercent >= 100 || maximum <= minimum)
+        {
+            throw new SplitException("The cut position must be inside the model bounding box.");
+        }
+        var coordinate = minimum + (maximum - minimum) * positionPercent / 100d;
+        var split = new StlSplitter().Split(mesh, axis, coordinate);
+        BinaryStlWriter.Write(partAPath, split.PartA.Triangles);
+        BinaryStlWriter.Write(partBPath, split.PartB.Triangles);
+        var partA = Process(partAPath, Path.GetFileName(partAPath));
+        var partB = Process(partBPath, Path.GetFileName(partBPath));
+        if (!partA.Validation.IsValid || !partB.Validation.IsValid)
+        {
+            File.Delete(partAPath);
+            File.Delete(partBPath);
+            throw new SplitException("The cut could not be capped and validated safely; no output files were created.");
+        }
+        return new StlSplitReport
+        {
+            FileName = sourceFileName,
+            FileSizeBytes = new FileInfo(filePath).Length,
+            Split = new StlSplitSummary
+            {
+                Axis = axis.ToString(),
+                PositionPercent = positionPercent,
+                PositionCoordinate = coordinate,
+                InputTriangleCount = mesh.Triangles.Count,
+                PartA = ToPart(partA, Path.GetFileName(partAPath)),
+                PartB = ToPart(partB, Path.GetFileName(partBPath))
+            }
+        };
+    }
+
+    private static StlSplitPart ToPart(MeshQualityReport report, string name) => new()
+    {
+        FileName = name,
+        TriangleCount = report.TriangleCount,
+        Dimensions = report.Dimensions,
+        Validation = new StlSplitValidation { IsWatertight = report.Topology.OpenEdgeCount == 0, IsManifold = report.Topology.NonManifoldEdgeCount == 0 }
+    };
+
     public ThreeMfRepairReport RepairThreeMf(string filePath, string sourceFileName, string outputPath)
     {
         var before = Process(filePath, sourceFileName);
