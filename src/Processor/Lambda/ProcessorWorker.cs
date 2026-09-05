@@ -298,9 +298,14 @@ internal sealed class ProcessorWorker(
         var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}-metadata.json");
         try
         {
-            await using var target = File.Create(path);
-            await storage.DownloadAsync(bucketName, $"{jobsPrefix}{jobId}/metadata.json", target, cancellationToken);
-            await target.FlushAsync(cancellationToken);
+            await using (var target = File.Create(path))
+            {
+                await storage.DownloadAsync(
+                    bucketName,
+                    $"{jobsPrefix}{jobId}/metadata.json",
+                    target,
+                    cancellationToken);
+            }
             var metadata = JsonSerializer.Deserialize<SplitMetadata>(await File.ReadAllTextAsync(path, cancellationToken), JsonOptions);
             if (metadata?.Operation != "stl_split" || !Enum.TryParse<Stl.SplitAxis>(metadata.SplitAxis, out var axis))
             {
@@ -308,7 +313,10 @@ internal sealed class ProcessorWorker(
             }
             return new SplitOptions(metadata.FileName ?? "model.stl", axis, metadata.SplitPositionPercent);
         }
-        finally { File.Delete(path); }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 
     private static string DecodeObjectKey(string objectKey)

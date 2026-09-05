@@ -203,6 +203,24 @@ public class ProcessorWorkerTests
     }
 
     [Fact]
+    public async Task ProcessAsync_SplitJob_ReadsMetadataAfterDownloadStreamIsClosed()
+    {
+        var storage = new FakeObjectStorage(
+            GetFixturePath("ascii", "validation-success-closed-tetrahedron.stl"),
+            """{"fileName":"tetrahedron.stl","operation":"stl_split","splitAxis":"Z","splitPositionPercent":50}""");
+        var worker = CreateWorker(storage);
+
+        var logs = new List<string>();
+        var response = await worker.ProcessAsync(
+            CreateSqsEvent("split-message", "storage-bucket", "jobs/split-job/input/split.stl"),
+            logs.Add);
+
+        Assert.Single(response.BatchItemFailures);
+        Assert.Contains(logs, log => log.Contains("SplitException", StringComparison.Ordinal));
+        Assert.DoesNotContain(logs, log => log.Contains("IOException", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task ProcessAsync_OversizedFile_ReturnsPartialBatchFailureWithoutDownloading()
     {
         var storage = new FakeObjectStorage(GetFixturePath("valid", "rotor.stl"));
@@ -302,7 +320,7 @@ public class ProcessorWorkerTests
         return Path.Combine(directory.FullName, "tests", "TestData", "stl", directoryName, fileName);
     }
 
-    private sealed class FakeObjectStorage(string sourceFilePath) : IObjectStorage
+    private sealed class FakeObjectStorage(string sourceFilePath, string? metadataJson = null) : IObjectStorage
     {
         public List<Upload> Uploads { get; } = [];
         public List<FileUpload> FileUploads { get; } = [];
@@ -327,6 +345,12 @@ public class ProcessorWorkerTests
             CancellationToken cancellationToken = default)
         {
             DownloadCount++;
+            if (objectKey.EndsWith("/metadata.json", StringComparison.Ordinal))
+            {
+                Assert.NotNull(metadataJson);
+                await destination.WriteAsync(System.Text.Encoding.UTF8.GetBytes(metadataJson), cancellationToken);
+                return;
+            }
             await using var source = File.OpenRead(sourceFilePath);
             await source.CopyToAsync(destination, cancellationToken);
         }
