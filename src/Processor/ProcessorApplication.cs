@@ -108,6 +108,38 @@ public class ProcessorApplication
     {
         var before = Process(filePath, sourceFileName);
         var repair = new ThreeMfSafeRepairer().Repair(filePath, outputPath);
+        var repairsApplied =
+            repair.DegenerateTrianglesRemoved > 0 ||
+            repair.DuplicateTrianglesRemoved > 0 ||
+            repair.InvalidIndexTrianglesRemoved > 0 ||
+            repair.OrientationFixesApplied > 0;
+        if (!repairsApplied)
+        {
+            File.Delete(outputPath);
+            return new ThreeMfRepairReport
+            {
+                FileName = sourceFileName,
+                FileSizeBytes = new FileInfo(filePath).Length,
+                BeforeValidation = before,
+                AfterValidation = before,
+                Repair = new ThreeMfRepairSummary
+                {
+                    RepairedFileAvailable = false,
+                    ModelsProcessed = repair.ModelsProcessed,
+                    TrianglesBefore = repair.TrianglesBefore,
+                    TrianglesAfter = repair.TrianglesAfter,
+                    DegenerateTrianglesRemoved = repair.DegenerateTrianglesRemoved,
+                    DuplicateTrianglesRemoved = repair.DuplicateTrianglesRemoved,
+                    InvalidIndexTrianglesRemoved = repair.InvalidIndexTrianglesRemoved,
+                    OrientationFixesApplied = repair.OrientationFixesApplied
+                },
+                Warnings = before.Validation.Issues
+                    .Where(issue => issue.Severity != "error")
+                    .Select(issue => issue.Message)
+                    .Distinct()
+                    .ToArray()
+            };
+        }
         var after = Process(outputPath, Path.GetFileName(outputPath));
         return new ThreeMfRepairReport
         {
