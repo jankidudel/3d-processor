@@ -306,28 +306,23 @@ internal sealed class ProcessorWorker(
 
     private async Task<SplitOptions?> ReadSplitOptionsAsync(string jobId, CancellationToken cancellationToken)
     {
-        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}-metadata.json");
-        try
+        await using var target = new MemoryStream();
+        await storage.DownloadAsync(
+            bucketName,
+            $"{jobsPrefix}{jobId}/metadata.json",
+            target,
+            cancellationToken
+        );
+        target.Position = 0;
+        var metadata = await JsonSerializer.DeserializeAsync<SplitMetadata>(
+            target,
+            JsonOptions,
+            cancellationToken);
+        if (metadata?.Operation != "stl_split" || !Enum.TryParse<Stl.SplitAxis>(metadata.SplitAxis, out var axis))
         {
-            await using (var target = File.Create(path))
-            {
-                await storage.DownloadAsync(
-                    bucketName,
-                    $"{jobsPrefix}{jobId}/metadata.json",
-                    target,
-                    cancellationToken);
-            }
-            var metadata = JsonSerializer.Deserialize<SplitMetadata>(await File.ReadAllTextAsync(path, cancellationToken), JsonOptions);
-            if (metadata?.Operation != "stl_split" || !Enum.TryParse<Stl.SplitAxis>(metadata.SplitAxis, out var axis))
-            {
-                return null;
-            }
-            return new SplitOptions(metadata.FileName ?? "model.stl", axis, metadata.SplitPositionPercent);
+            return null;
         }
-        finally
-        {
-            File.Delete(path);
-        }
+        return new SplitOptions(metadata.FileName ?? "model.stl", axis, metadata.SplitPositionPercent);
     }
 
     private static string DecodeObjectKey(string objectKey)

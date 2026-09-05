@@ -222,6 +222,7 @@ public class ProcessorWorkerTests
         Assert.Equal(2, storage.FileUploads.Count);
         Assert.Contains(storage.FileUploads, upload => upload.ObjectKey == "jobs/split-job/output/part-a.stl");
         Assert.Contains(storage.FileUploads, upload => upload.ObjectKey == "jobs/split-job/output/part-b.stl");
+        Assert.IsType<MemoryStream>(storage.MetadataDestination);
     }
 
     [Fact]
@@ -347,6 +348,10 @@ public class ProcessorWorkerTests
     {
         public List<Upload> Uploads { get; } = [];
         public List<FileUpload> FileUploads { get; } = [];
+        public Stream? MetadataDestination
+        {
+            get; private set;
+        }
         public int DownloadCount
         {
             get; private set;
@@ -371,6 +376,7 @@ public class ProcessorWorkerTests
             if (objectKey.EndsWith("/metadata.json", StringComparison.Ordinal))
             {
                 Assert.NotNull(metadataJson);
+                MetadataDestination = destination;
                 await destination.WriteAsync(System.Text.Encoding.UTF8.GetBytes(metadataJson), cancellationToken);
                 return;
             }
