@@ -2,6 +2,7 @@ using System.Text.Json;
 using Amazon.Lambda.SQSEvents;
 using Processor.Formats;
 using Processor.Reporting;
+using Processor.Stl;
 
 namespace Processor.Lambda;
 
@@ -63,7 +64,8 @@ internal sealed class ProcessorWorker(
             catch (Exception exception)
             {
                 log?.Invoke($"Processing SQS message {message.MessageId} failed: {exception}");
-                var permanentFailure = exception is ModelFormatException;
+                var permanentFailure =
+                    exception is ModelFormatException or SplitException;
                 if (permanentFailure || IsFinalAttempt(message))
                 {
                     try
@@ -106,15 +108,24 @@ internal sealed class ProcessorWorker(
         {
             return;
         }
+        var (code, reason) = exception switch
+        {
+            ModelFormatException formatException =>
+                ("processing_failed", formatException.ClientMessage),
+            SplitException =>
+                ("split_could_not_be_capped_safely", "This cut could not be capped safely. Try a different cut position or check the STL for mesh problems first."),
+            _ => ("processing_failed", "The file could not be processed.")
+        };
         var failureJson = JsonSerializer.Serialize(new
         {
             reportVersion = "1.0",
+            status = "failed",
+            reasonCode = code,
+            reason,
             error = new
             {
-                code = "processing_failed",
-                message = exception is ModelFormatException formatException
-                    ? formatException.ClientMessage
-                    : "The file could not be processed."
+                code,
+                message = reason
             }
         });
         await storage.UploadJsonAsync(

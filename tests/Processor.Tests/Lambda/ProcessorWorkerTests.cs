@@ -203,7 +203,7 @@ public class ProcessorWorkerTests
     }
 
     [Fact]
-    public async Task ProcessAsync_SplitJob_ReadsMetadataAfterDownloadStreamIsClosed()
+    public async Task ProcessAsync_ValidSplitJob_WritesBothValidatedParts()
     {
         var storage = new FakeObjectStorage(
             GetFixturePath("ascii", "validation-success-closed-tetrahedron.stl"),
@@ -215,9 +215,32 @@ public class ProcessorWorkerTests
             CreateSqsEvent("split-message", "storage-bucket", "jobs/split-job/input/split.stl"),
             logs.Add);
 
-        Assert.Single(response.BatchItemFailures);
-        Assert.Contains(logs, log => log.Contains("SplitException", StringComparison.Ordinal));
-        Assert.DoesNotContain(logs, log => log.Contains("IOException", StringComparison.Ordinal));
+        Assert.Empty(response.BatchItemFailures);
+        Assert.DoesNotContain(logs, log => log.Contains("SplitException", StringComparison.Ordinal));
+        var report = Assert.Single(storage.Uploads);
+        Assert.Equal("jobs/split-job/output/report.json", report.ObjectKey);
+        Assert.Equal(2, storage.FileUploads.Count);
+        Assert.Contains(storage.FileUploads, upload => upload.ObjectKey == "jobs/split-job/output/part-a.stl");
+        Assert.Contains(storage.FileUploads, upload => upload.ObjectKey == "jobs/split-job/output/part-b.stl");
+    }
+
+    [Fact]
+    public async Task ProcessAsync_UnsafeSplitJob_WritesTerminalSafeFailureWithoutParts()
+    {
+        var storage = new FakeObjectStorage(
+            GetFixturePath("open-edges", "rotor-open-edges.stl"),
+            """{"fileName":"open.stl","operation":"stl_split","splitAxis":"Z","splitPositionPercent":50}""");
+
+        var response = await CreateWorker(storage).ProcessAsync(CreateSqsEvent(
+            "unsafe-split", "storage-bucket", "jobs/unsafe-split/input/split.stl"));
+
+        Assert.Empty(response.BatchItemFailures);
+        var failure = Assert.Single(storage.Uploads);
+        Assert.Equal("jobs/unsafe-split/output/failure.json", failure.ObjectKey);
+        using var json = JsonDocument.Parse(failure.Json);
+        Assert.Equal("failed", json.RootElement.GetProperty("status").GetString());
+        Assert.Equal("split_could_not_be_capped_safely", json.RootElement.GetProperty("reasonCode").GetString());
+        Assert.Empty(storage.FileUploads);
     }
 
     [Fact]

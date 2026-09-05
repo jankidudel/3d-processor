@@ -35,7 +35,7 @@ public sealed class StlSplitter
             var points = Intersections(vertices, values, axis, position, tolerance);
             if (points.Count == 2 && !Near(points[0], points[1], tolerance))
             {
-                segments.Add(new Segment(points[0], points[1]));
+                AddSegment(segments, new Segment(points[0], points[1]), tolerance);
             }
             else if (points.Count != 0)
             {
@@ -49,10 +49,14 @@ public sealed class StlSplitter
         var loops = BuildLoops(segments, tolerance);
         foreach (var loop in loops)
         {
-            Cap(a, loop, axis, position, false, tolerance);
-            Cap(b, loop, axis, position, true, tolerance);
+            // Part A retains the lower half-space, so its new cut face points
+            // toward the positive axis. Part B's new cut face points back.
+            Cap(a, loop, axis, position, true, tolerance);
+            Cap(b, loop, axis, position, false, tolerance);
         }
-        return new SplitResult(ToMesh(a), ToMesh(b));
+        return new SplitResult(
+            ToMesh(NormalizeTriangles(a, tolerance)),
+            ToMesh(NormalizeTriangles(b, tolerance)));
     }
 
     private static Mesh ToMesh(List<Triangle> triangles)
@@ -60,6 +64,61 @@ public sealed class StlSplitter
         var mesh = new Mesh();
         mesh.Triangles.AddRange(triangles);
         return mesh;
+    }
+
+    private static List<Triangle> NormalizeTriangles(
+        List<Triangle> triangles,
+        double tolerance)
+    {
+        var vertices = new List<Vector3>();
+        var normalized = new List<Triangle>();
+        var seen = new HashSet<TriangleKey>();
+        foreach (var triangle in triangles)
+        {
+            var a = Canonicalize(triangle.A, vertices, tolerance);
+            var b = Canonicalize(triangle.B, vertices, tolerance);
+            var c = Canonicalize(triangle.C, vertices, tolerance);
+            var normal = Normal(a, b, c);
+            if (Length(normal) <= tolerance * tolerance)
+            {
+                continue;
+            }
+            var key = TriangleKey.Create(a, b, c);
+            if (!seen.Add(key))
+            {
+                continue;
+            }
+            normalized.Add(new Triangle(normal, a, b, c));
+        }
+        return normalized;
+    }
+
+    private static Vector3 Canonicalize(
+        Vector3 value,
+        List<Vector3> vertices,
+        double tolerance)
+    {
+        var existing = vertices.FirstOrDefault(vertex => Near(vertex, value, tolerance));
+        if (existing is not null)
+        {
+            return existing;
+        }
+        vertices.Add(value);
+        return value;
+    }
+
+    private static void AddSegment(
+        List<Segment> segments,
+        Segment candidate,
+        double tolerance)
+    {
+        if (segments.Any(segment =>
+                (Near(segment.A, candidate.A, tolerance) && Near(segment.B, candidate.B, tolerance)) ||
+                (Near(segment.A, candidate.B, tolerance) && Near(segment.B, candidate.A, tolerance))))
+        {
+            return;
+        }
+        segments.Add(candidate);
     }
     private static double Extent(Mesh mesh, SplitAxis axis) => mesh.Triangles.SelectMany(t => new[] { Coordinate(t.A, axis), Coordinate(t.B, axis), Coordinate(t.C, axis) }).Max() - mesh.Triangles.SelectMany(t => new[] { Coordinate(t.A, axis), Coordinate(t.B, axis), Coordinate(t.C, axis) }).Min();
     private static double Coordinate(Vector3 point, SplitAxis axis) => axis switch { SplitAxis.X => point.X, SplitAxis.Y => point.Y, _ => point.Z };
@@ -254,6 +313,26 @@ public sealed class StlSplitter
     private static double Dot(Vector3 a, Vector3 b) => (double)a.X * b.X + (double)a.Y * b.Y + (double)a.Z * b.Z;
     private static double Length(Vector3 p) => Math.Sqrt(Dot(p, p));
     private readonly record struct Segment(Vector3 A, Vector3 B);
+    private readonly record struct TriangleKey(Vector3 First, Vector3 Second, Vector3 Third)
+    {
+        public static TriangleKey Create(Vector3 a, Vector3 b, Vector3 c)
+        {
+            var vertices = new[] { a, b, c };
+            Array.Sort(vertices, Compare);
+            return new TriangleKey(vertices[0], vertices[1], vertices[2]);
+        }
+    }
+
+    private static int Compare(Vector3 left, Vector3 right)
+    {
+        var comparison = left.X.CompareTo(right.X);
+        if (comparison != 0)
+        {
+            return comparison;
+        }
+        comparison = left.Y.CompareTo(right.Y);
+        return comparison != 0 ? comparison : left.Z.CompareTo(right.Z);
+    }
 }
 
 public enum SplitAxis
