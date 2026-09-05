@@ -152,9 +152,9 @@ Processor::Processor.Function::FunctionHandler
 ```
 
 It receives SQS messages containing native S3 object-created events. For each
-`jobs/{jobId}/input.stl` object, it downloads the file to Lambda's temporary
+`jobs/{jobId}/input/input.stl` object, it downloads the file to Lambda's temporary
 storage, runs the existing validation engine, and writes JSON to
-`jobs/{jobId}/report.json`. The same report key is overwritten on duplicate
+`jobs/{jobId}/output/report.json`. The same report key is overwritten on duplicate
 delivery, making retries deterministic without introducing a database.
 
 The worker currently accepts `.stl` files. Unsupported formats fail the SQS record
@@ -166,7 +166,7 @@ and a fresh S3 metadata check immediately before download. The second check prev
 an oversized object replacement from bypassing the event-size validation.
 
 When the third receive attempt fails, the worker also writes a safe terminal result
-to `jobs/{jobId}/failure.json` before the message moves to the DLQ. The API uses
+to `jobs/{jobId}/output/failure.json` before the message moves to the DLQ. The API uses
 that artifact to return `status: "failed"` without a database.
 
 The infrastructure supplies these environment variables:

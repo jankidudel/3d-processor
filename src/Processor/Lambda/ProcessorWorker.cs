@@ -13,6 +13,8 @@ internal sealed class ProcessorWorker(
 {
     internal const long MaxUploadSizeBytes = 25L * 1024 * 1024;
     internal const int MaxProcessingAttempts = 3;
+    private const string InputFolder = "input";
+    private const string OutputFolder = "output";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -100,7 +102,7 @@ internal sealed class ProcessorWorker(
             return;
         }
         var objectKey = DecodeObjectKey(record.S3.Object.Key);
-        if (!TryGetJobId(objectKey, out var jobId))
+        if (!TryGetJobInput(objectKey, out var jobId, out _))
         {
             return;
         }
@@ -117,26 +119,28 @@ internal sealed class ProcessorWorker(
         });
         await storage.UploadJsonAsync(
             bucketName,
-            $"{jobsPrefix}{jobId}/failure.json",
+            $"{jobsPrefix}{jobId}/{OutputFolder}/failure.json",
             failureJson,
             cancellationToken);
     }
 
-    private bool TryGetJobId(string objectKey, out string jobId)
+    private bool TryGetJobInput(string objectKey, out string jobId, out string fileName)
     {
         jobId = "";
+        fileName = "";
         if (!objectKey.StartsWith(jobsPrefix, StringComparison.Ordinal))
         {
             return false;
         }
         var relativeKey = objectKey[jobsPrefix.Length..];
-        var separatorIndex = relativeKey.IndexOf('/');
-        if (separatorIndex <= 0 || !IsSupportedInputName(relativeKey[(separatorIndex + 1)..]))
+        var parts = relativeKey.Split('/');
+        if (parts.Length != 3 || parts[1] != InputFolder || !IsSupportedInputName(parts[2]))
         {
             return false;
         }
-        jobId = relativeKey[..separatorIndex];
-        return jobId is not "." and not ".." && !jobId.Contains('/');
+        jobId = parts[0];
+        fileName = parts[2];
+        return jobId is not "." and not ".." && jobId.Length > 0;
     }
 
     private static bool IsFinalAttempt(SQSEvent.SQSMessage message)
@@ -198,27 +202,10 @@ internal sealed class ProcessorWorker(
             throw new InvalidDataException($"Unexpected S3 bucket '{eventBucket}'.");
         }
 
-        var relativeKey = objectKey.StartsWith(jobsPrefix, StringComparison.Ordinal)
-            ? objectKey[jobsPrefix.Length..]
-            : throw new InvalidDataException($"Object key '{objectKey}' is outside '{jobsPrefix}'.");
-        var separatorIndex = relativeKey.IndexOf('/');
-        if (separatorIndex <= 0 || !IsSupportedInputName(relativeKey[(separatorIndex + 1)..]))
+        if (!TryGetJobInput(objectKey, out var jobId, out var fileName))
         {
             throw new InvalidDataException(
                 $"Object key '{objectKey}' must be a supported job input.");
-        }
-
-        var jobId = relativeKey[..separatorIndex];
-        var fileName = relativeKey[(separatorIndex + 1)..];
-        if (jobId is "." or ".." || jobId.Contains('/'))
-        {
-            throw new InvalidDataException(
-                $"Object key '{objectKey}' must be a supported job input.");
-        }
-
-        if (!IsSupportedInputName(fileName))
-        {
-            throw new NotSupportedException($"File type for '{fileName}' is not supported.");
         }
 
         if (record.S3.Object.Size > MaxUploadSizeBytes)
@@ -265,7 +252,7 @@ internal sealed class ProcessorWorker(
             {
                 report = processor.Process(temporaryPath, fileName);
             }
-            var reportKey = $"{jobsPrefix}{jobId}/report.json";
+            var reportKey = $"{jobsPrefix}{jobId}/{OutputFolder}/report.json";
             await storage.UploadJsonAsync(
                 bucketName,
                 reportKey,
@@ -275,7 +262,7 @@ internal sealed class ProcessorWorker(
             {
                 await storage.UploadFileAsync(
                     bucketName,
-                    $"{jobsPrefix}{jobId}/cleaned{Path.GetExtension(fileName)}",
+                    $"{jobsPrefix}{jobId}/{OutputFolder}/cleaned{Path.GetExtension(fileName)}",
                     repairOutputPath,
                     repairHandler!.OutputContentType,
                     cancellationToken);

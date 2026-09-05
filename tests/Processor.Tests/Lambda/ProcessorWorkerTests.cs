@@ -14,14 +14,14 @@ public class ProcessorWorkerTests
         var sqsEvent = CreateSqsEvent(
             "message-1",
             "storage-bucket",
-            "jobs/job-123/input.stl");
+            "jobs/job-123/input/input.stl");
 
         var response = await worker.ProcessAsync(sqsEvent);
 
         Assert.Empty(response.BatchItemFailures);
         var upload = Assert.Single(storage.Uploads);
         Assert.Equal("storage-bucket", upload.BucketName);
-        Assert.Equal("jobs/job-123/report.json", upload.ObjectKey);
+        Assert.Equal("jobs/job-123/output/report.json", upload.ObjectKey);
         using var report = JsonDocument.Parse(upload.Json);
         Assert.Equal("input.stl", report.RootElement.GetProperty("fileName").GetString());
         Assert.Equal(2356, report.RootElement.GetProperty("triangleCount").GetInt32());
@@ -36,8 +36,8 @@ public class ProcessorWorkerTests
         {
             Records =
             [
-                CreateMessage("message-1", "storage-bucket", "jobs/job-456/input.stl"),
-                CreateMessage("message-2", "storage-bucket", "jobs/job-456/input.stl")
+                CreateMessage("message-1", "storage-bucket", "jobs/job-456/input/input.stl"),
+                CreateMessage("message-2", "storage-bucket", "jobs/job-456/input/input.stl")
             ]
         };
 
@@ -46,7 +46,7 @@ public class ProcessorWorkerTests
         Assert.Empty(response.BatchItemFailures);
         Assert.Equal(2, storage.Uploads.Count);
         Assert.All(storage.Uploads, upload =>
-            Assert.Equal("jobs/job-456/report.json", upload.ObjectKey));
+            Assert.Equal("jobs/job-456/output/report.json", upload.ObjectKey));
     }
 
     [Fact]
@@ -121,12 +121,12 @@ public class ProcessorWorkerTests
         var sqsEvent = CreateSqsEvent(
             "message-1",
             "storage-bucket",
-            "jobs/job-123/input.stl");
+            "jobs/job-123/input/input.stl");
         var response = await worker.ProcessAsync(sqsEvent);
 
         Assert.Empty(response.BatchItemFailures);
         var failure = Assert.Single(storage.Uploads);
-        Assert.Equal("jobs/job-123/failure.json", failure.ObjectKey);
+        Assert.Equal("jobs/job-123/output/failure.json", failure.ObjectKey);
         using var json = JsonDocument.Parse(failure.Json);
         Assert.Equal("processing_failed", json.RootElement.GetProperty("error").GetProperty("code").GetString());
         Assert.Equal(
@@ -144,7 +144,7 @@ public class ProcessorWorkerTests
             var storage = new FakeObjectStorage(path);
             var worker = CreateWorker(storage);
             var response = await worker.ProcessAsync(CreateSqsEvent(
-                "message-3mf", "storage-bucket", "jobs/job-3mf/input.3mf"));
+                "message-3mf", "storage-bucket", "jobs/job-3mf/input/input.3mf"));
 
             Assert.Empty(response.BatchItemFailures);
             var failure = Assert.Single(storage.Uploads);
@@ -170,7 +170,7 @@ public class ProcessorWorkerTests
         try
         {
             var storage = new FakeObjectStorage(path);
-            var response = await CreateWorker(storage).ProcessAsync(CreateSqsEvent("message-feature", "storage-bucket", "jobs/job-feature/input.3mf"));
+            var response = await CreateWorker(storage).ProcessAsync(CreateSqsEvent("message-feature", "storage-bucket", "jobs/job-feature/input/input.3mf"));
             Assert.Empty(response.BatchItemFailures);
             using var json = JsonDocument.Parse(Assert.Single(storage.Uploads).Json);
             Assert.Equal("This 3MF file uses a feature that InspectMesh does not support yet.", json.RootElement.GetProperty("error").GetProperty("message").GetString());
@@ -190,13 +190,13 @@ public class ProcessorWorkerTests
         var storage = new FakeObjectStorage(
             GetFixturePath("ascii", "validation-success-closed-tetrahedron.stl"));
         var worker = CreateWorker(storage);
-        var sqsEvent = CreateSqsEvent("message-1", "storage-bucket", "jobs/job-ascii/input.stl");
+        var sqsEvent = CreateSqsEvent("message-1", "storage-bucket", "jobs/job-ascii/input/input.stl");
 
         var response = await worker.ProcessAsync(sqsEvent);
 
         Assert.Empty(response.BatchItemFailures);
         var upload = Assert.Single(storage.Uploads);
-        Assert.Equal("jobs/job-ascii/report.json", upload.ObjectKey);
+        Assert.Equal("jobs/job-ascii/output/report.json", upload.ObjectKey);
         using var report = JsonDocument.Parse(upload.Json);
         Assert.Equal(4, report.RootElement.GetProperty("triangleCount").GetInt32());
         Assert.True(report.RootElement.GetProperty("validation").GetProperty("isValid").GetBoolean());
@@ -210,7 +210,7 @@ public class ProcessorWorkerTests
         var sqsEvent = CreateSqsEvent(
             "message-1",
             "storage-bucket",
-            "jobs/job-123/input.stl",
+            "jobs/job-123/input/input.stl",
             ProcessorWorker.MaxUploadSizeBytes + 1);
 
         var response = await worker.ProcessAsync(sqsEvent);
@@ -231,7 +231,7 @@ public class ProcessorWorkerTests
         var sqsEvent = CreateSqsEvent(
             "message-1",
             "storage-bucket",
-            "jobs/job-123/input.stl",
+            "jobs/job-123/input/input.stl",
             117884);
 
         var response = await worker.ProcessAsync(sqsEvent);
