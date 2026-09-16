@@ -1,0 +1,12 @@
+# .NET build and test output.
+**/bin/
+**/obj/
+**/TestResults/
+artifacts/
+coverage/
+*.trx
+
+# Local editor and diagnostic files.
+.vs/
+.idea/
+*.log
