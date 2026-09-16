@@ -1,8 +1,6 @@
 name: deploy-processor
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
@@ -19,17 +17,17 @@ permissions:
   id-token: write
 
 concurrency:
-  group: deploy-processor-${{ github.event_name == 'push' && 'dev' || inputs.environment }}
+  group: deploy-processor-${{ inputs.environment }}
   cancel-in-progress: false
 
 jobs:
   deploy:
-    name: Deploy processor to ${{ github.event_name == 'push' && 'dev' || inputs.environment }}
+    name: Deploy processor to ${{ inputs.environment }}
     runs-on: ubuntu-latest
-    environment: ${{ github.event_name == 'push' && 'dev' || inputs.environment }}
+    environment: ${{ inputs.environment }}
     env:
       AWS_REGION: us-east-1
-      STAGE: ${{ github.event_name == 'push' && 'dev' || inputs.environment }}
+      STAGE: ${{ inputs.environment }}
       AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
     steps:
