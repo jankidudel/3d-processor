@@ -47,8 +47,25 @@ public sealed class StlSafeRepairerTests
         var result = new StlSafeRepairer().Repair(mesh);
 
         Assert.NotNull(result.CleanedMesh);
-        Assert.True(result.OrientationsCorrected > 0);
+        Assert.Equal(1, result.OrientationsCorrected);
         Assert.True(new MeshValidator().Validate(result.CleanedMesh!).IsValid);
+    }
+
+    [Fact]
+    public void Consistently_inward_closed_mesh_is_not_claimed_as_an_orientation_fix()
+    {
+        var mesh = Tetrahedron();
+        for (var index = 0; index < mesh.Triangles.Count; index++)
+        {
+            var face = mesh.Triangles[index];
+            mesh.Triangles[index] = new Triangle(face.Normal, face.A, face.C, face.B);
+        }
+
+        var result = new StlSafeRepairer().Repair(mesh);
+
+        Assert.Equal(0, result.OrientationsCorrected);
+        Assert.Null(result.CleanedMesh);
+        Assert.False(new MeshValidator().Validate(mesh).Topology.HasInconsistentOrientation);
     }
 
     private static Mesh Tetrahedron()

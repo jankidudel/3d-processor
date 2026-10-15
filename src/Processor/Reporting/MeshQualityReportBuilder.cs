@@ -40,7 +40,13 @@ public sealed class MeshQualityReportBuilder
                 Depth = geometry.BoundingBox.MaxZ - geometry.BoundingBox.MinZ
             },
             SurfaceArea = geometry.SurfaceArea,
-            Volume = Math.Abs(geometry.SignedVolume),
+            Volume = validation.IsValid &&
+                validation.Topology.ConnectedComponentCount == 1 &&
+                validation.Topology.OpenEdgeCount == 0 &&
+                validation.Topology.NonManifoldEdgeCount == 0 &&
+                !validation.Topology.HasInconsistentOrientation
+                    ? Math.Abs(geometry.SignedVolume)
+                    : null,
             Topology = validation.Topology,
             Validation = validation,
             IssueHighlights = issueAnalysis?.Highlights,

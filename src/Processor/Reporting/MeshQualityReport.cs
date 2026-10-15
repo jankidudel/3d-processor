@@ -34,7 +34,7 @@ public sealed class MeshQualityReport
     {
         get; init;
     }
-    public double Volume
+    public double? Volume
     {
         get; init;
     }

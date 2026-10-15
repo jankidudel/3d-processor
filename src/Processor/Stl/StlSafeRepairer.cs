@@ -114,9 +114,12 @@ public sealed class StlSafeRepairer
                 skipped.Add("An open, non-manifold or contradictory region was not re-oriented.");
                 continue;
             }
+            // Both parity assignments satisfy shared-edge consistency. Prefer
+            // the smaller edit; the graph alone cannot identify the outside.
+            var invertAssignment = component.Count(index => flips[index]) > component.Count / 2;
             foreach (var index in component)
             {
-                if (!flips[index])
+                if (flips[index] == invertAssignment)
                 {
                     continue;
                 }

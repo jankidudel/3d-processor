@@ -89,7 +89,7 @@ public class StlReaderTests
             Assert.Equal(binary.Dimensions.Height, ascii.Dimensions.Height);
             Assert.Equal(binary.Dimensions.Depth, ascii.Dimensions.Depth);
             Assert.Equal(binary.SurfaceArea, ascii.SurfaceArea, 10);
-            Assert.Equal(binary.Volume, ascii.Volume, 10);
+            Assert.Equal(binary.Volume!.Value, ascii.Volume!.Value, 10);
             Assert.Equal(binary.Validation.IsValid, ascii.Validation.IsValid);
             Assert.Equal(binary.Validation.Issues, ascii.Validation.Issues);
         }

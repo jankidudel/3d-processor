@@ -34,7 +34,7 @@ public class MeshQualityReportBuilderTests
             Assert.Equal(1, report.Dimensions.Height);
             Assert.Equal(1, report.Dimensions.Depth);
             Assert.Equal(1.5 + Math.Sqrt(3) / 2, report.SurfaceArea, 10);
-            Assert.Equal(1.0 / 6.0, report.Volume, 10);
+            Assert.Equal(1.0 / 6.0, report.Volume!.Value, 10);
             Assert.Equal(1, report.Topology.ConnectedComponentCount);
         }
         finally
@@ -64,7 +64,7 @@ public class MeshQualityReportBuilderTests
             var json = MeshQualityReportFormatter.FormatJson(report);
 
             Assert.Equal(0, report.SurfaceArea);
-            Assert.Equal(0, report.Volume);
+            Assert.Null(report.Volume);
             Assert.Contains("\"invalid_coordinates\"", json);
         }
         finally
@@ -89,6 +89,7 @@ public class MeshQualityReportBuilderTests
             var report = new MeshQualityReportBuilder().Build(
                 filePath, mesh, new MeshValidator().Validate(mesh));
 
+            Assert.Null(report.Volume);
             var samples = Assert.IsType<MeshIssueHighlights>(report.IssueHighlights).Samples;
             Assert.Equal(3, samples[ValidationIssueCodes.OpenEdge].Count);
             Assert.All(samples.Values, values => Assert.True(values.Count <= MeshIssueHighlights.SampleLimit));

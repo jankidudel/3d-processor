@@ -24,7 +24,7 @@ public static class MeshQualityReportFormatter
             Bounding box max:         ({{Format(report.BoundingBox.MaxX)}}, {{Format(report.BoundingBox.MaxY)}}, {{Format(report.BoundingBox.MaxZ)}})
             Dimensions (W x H x D):   {{Format(report.Dimensions.Width)}} x {{Format(report.Dimensions.Height)}} x {{Format(report.Dimensions.Depth)}}
             Surface area:             {{Format(report.SurfaceArea)}}
-            Volume:                   {{Format(report.Volume)}}
+            Volume:                   {{(report.Volume is double volume ? Format(volume) : "Unavailable")}}
             Connected components:     {{report.Topology.ConnectedComponentCount}}
 
             Degenerate triangles:     {{Count(report, ValidationIssueCodes.DegenerateTriangle)}}
