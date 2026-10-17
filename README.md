@@ -84,6 +84,29 @@ dotnet test 3d-processor.slnx --filter "Category!=Integration"
 
 The unfiltered `dotnet test` command runs both groups.
 
+## Reproduce split and assembly controls
+
+From the workspace's `3d-frontend` directory, run
+`node --experimental-strip-types scripts/generate-split-assembly-fixtures.mts`.
+From this repository, run:
+
+```sh
+dotnet run --project tools/SplitEvidence -- ../3d-frontend/public/examples
+```
+
+The runner exercises `ProcessorApplication.SplitStl` on the registered origin
+cube, shifted cube, missing-face cube and closed through-channel. It saves both
+accepted binary STL exports, reopens them and records dimensions, source bounds,
+edge topology, screened volume and SHA-256 identities in the public
+`split-assembly/observations.json` evidence asset. It also validates the three
+alignment coupon meshes. The tube's caps fail the existing output validation;
+the splitter removes both files. Multiple disjoint contours can still produce
+more than one component in either accepted export.
+
+These are local software observations under an explicit millimetre assumption,
+not production-job or physical-fit evidence. The frontend's
+`npm run test:collection-examples` independently reopens the published bytes.
+
 ## Generate code coverage
 
 ```sh

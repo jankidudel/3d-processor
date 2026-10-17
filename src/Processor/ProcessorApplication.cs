@@ -154,7 +154,14 @@ public class ProcessorApplication
         FileName = name,
         TriangleCount = report.TriangleCount,
         Dimensions = report.Dimensions,
-        Validation = new StlSplitValidation { IsWatertight = report.Topology.OpenEdgeCount == 0, IsManifold = report.Topology.NonManifoldEdgeCount == 0 }
+        BoundingBox = report.BoundingBox,
+        Validation = new StlSplitValidation
+        {
+            IsValid = report.Validation.IsValid,
+            IsWatertight = report.Topology.OpenEdgeCount == 0,
+            IsManifold = report.Topology.NonManifoldEdgeCount == 0,
+            ConnectedComponentCount = report.Topology.ConnectedComponentCount
+        }
     };
 
     public ThreeMfRepairReport RepairThreeMf(string filePath, string sourceFileName, string outputPath)

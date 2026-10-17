@@ -39,16 +39,25 @@ public sealed class StlSplitPart
         get; init;
     }
     public MeshDimensions Dimensions { get; init; } = new();
+    public MeshBoundingBox BoundingBox { get; init; } = new();
     public StlSplitValidation Validation { get; init; } = new();
 }
 
 public sealed class StlSplitValidation
 {
+    public bool IsValid
+    {
+        get; init;
+    }
     public bool IsWatertight
     {
         get; init;
     }
     public bool IsManifold
+    {
+        get; init;
+    }
+    public int ConnectedComponentCount
     {
         get; init;
     }
