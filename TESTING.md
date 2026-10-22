@@ -71,3 +71,35 @@ RUN_PERFORMANCE_SMOKE_TESTS=1 dotnet test 3d-processor.slnx \
 The generated files are deleted after the test and are not committed to the
 repository. The smoke test is intended to expose major regressions; it does not
 replace repeatable benchmarking.
+
+## Repeated processing and memory regressions
+
+The normal test suite generates a 281,540-triangle binary STL and processes it
+twice in one process without forcing collection between calls. It checks stable
+reports and a broad 128 MiB allocation budget per call. The generated mesh is
+owned mathematical geometry, not a customer upload. Additional tests verify
+bounded diagnostic messages, exact issue totals, independent 3MF build items and
+agreement between validation and overlays, including triangles in the YZ plane.
+
+Measure an existing STL or 3MF using the complete processing/reporting pipeline:
+
+```sh
+dotnet run --configuration Release --project tools/MemoryProbe -- /absolute/path/model.stl
+```
+
+The probe runs the file twice without forced garbage collection and reports
+elapsed time, total allocations and process working set sampled every 2 ms.
+Allocations are cumulative bytes allocated during a call, not peak live memory.
+Sampling can miss brief peaks. These measurements include the local .NET host,
+but exclude the Lambda host and AWS request overhead; they are not proof of a
+production memory ceiling.
+
+After building the probe, exercise a constrained managed heap:
+
+```sh
+DOTNET_GCHeapHardLimit=0x08000000 dotnet tools/MemoryProbe/bin/Release/net10.0/MemoryProbe.dll /absolute/path/model.stl
+```
+
+This sets a 128 MiB managed GC budget for that local process. It does not impose
+Lambda's 256 MB total-process limit or simulate the Linux Lambda runtime.
+The probe accepts existing files without copying them into the repository.

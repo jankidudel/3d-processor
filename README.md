@@ -52,6 +52,16 @@ count, axis-aligned bounding box, width/height/depth, surface area, volume, and
 structured validation results. This report is the processor's output model and
 can be consumed directly by API or UI layers.
 
+Validation, measurements and issue overlays share one analysis. Geometry uses
+value types and pre-sized storage; edge incidence is stored inline rather than
+in a separate list for every edge. Only bounded report data survives analysis.
+Each validation category retains up to 100 detailed messages, followed by an
+aggregate entry for additional findings. Sum each entry's `count` to obtain the
+exact total; the length of `validation.issues` is not the finding count.
+Highlight samples remain limited to 100 per category and drawable edge segments
+to 5,000 per category, with exact totals and truncation flags. Independent 3MF
+build items remain independent when their diagnostics are aggregated.
+
 AWS SAM is not required to run the processor locally. SAM would become useful
 if the application were later packaged as an AWS Lambda handler with a SAM
 template. Until then, the console entry point provides the simplest local

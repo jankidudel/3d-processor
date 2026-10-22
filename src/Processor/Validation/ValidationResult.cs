@@ -1,9 +1,19 @@
 using Processor.Topology;
+using Processor.Reporting;
 
 namespace Processor.Validation;
 
 public class ValidationResult
 {
+    // Only bounded output is retained, never the large analysis dictionaries or mesh.
+    internal MeshIssueHighlightAnalysis? IssueAnalysis
+    {
+        get; init;
+    }
+    internal MeshGeometryMeasurements? Geometry
+    {
+        get; init;
+    }
     public List<ValidationIssue> Issues { get; init; } = [];
     public MeshTopology Topology { get; init; } = new();
 

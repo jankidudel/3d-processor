@@ -1,6 +1,6 @@
 namespace Processor.Models;
 
-public record Vector3(
+public readonly record struct Vector3(
   float X,
   float Y,
   float Z

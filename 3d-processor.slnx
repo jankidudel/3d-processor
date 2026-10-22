@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/" />
   <Folder Name="/tools/">
+    <Project Path="tools/MemoryProbe/MemoryProbe.csproj" />
     <Project Path="tools/SplitEvidence/SplitEvidence.csproj" />
   </Folder>
   <Project Path="src/Processor/Processor.csproj" />

@@ -16,21 +16,32 @@ public static class MeshTopologyAnalyzer
             return new MeshTopology();
         }
 
-        var components = new DisjointSet(triangleCount);
-        var firstTriangleByVertex = new Dictionary<Vector3, int>();
+        var components = new ComponentTracker(triangleCount);
 
         for (var triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++)
         {
-            var triangle = mesh.Triangles[triangleIndex];
-            ConnectVertex(triangle.A, triangleIndex, firstTriangleByVertex, components);
-            ConnectVertex(triangle.B, triangleIndex, firstTriangleByVertex, components);
-            ConnectVertex(triangle.C, triangleIndex, firstTriangleByVertex, components);
+            components.Add(mesh.Triangles[triangleIndex], triangleIndex);
         }
 
         return new MeshTopology
         {
-            ConnectedComponentCount = components.CountRoots()
+            ConnectedComponentCount = components.Count
         };
+    }
+
+    internal sealed class ComponentTracker(int triangleCount)
+    {
+        private readonly DisjointSet components = new(triangleCount);
+        private readonly Dictionary<Vector3, int> firstTriangleByVertex = new(triangleCount / 2);
+
+        public int Count => components.CountRoots();
+
+        public void Add(Triangle triangle, int index)
+        {
+            ConnectVertex(triangle.A, index, firstTriangleByVertex, components);
+            ConnectVertex(triangle.B, index, firstTriangleByVertex, components);
+            ConnectVertex(triangle.C, index, firstTriangleByVertex, components);
+        }
     }
 
     private static void ConnectVertex(

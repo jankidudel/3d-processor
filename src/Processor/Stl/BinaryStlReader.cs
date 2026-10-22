@@ -29,7 +29,7 @@ public class BinaryStlReader : IStlReader
             throw new MalformedBinaryStlException();
         }
 
-        var mesh = new Mesh();
+        var mesh = new Mesh(checked((int)triangleCount));
 
         for (uint i = 0; i < triangleCount; i++)
         {

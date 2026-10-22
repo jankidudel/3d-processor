@@ -1,4 +1,6 @@
+using System.Runtime.InteropServices;
 using Processor.Models;
+using Processor.Reporting;
 using Processor.Topology;
 
 namespace Processor.Validation;
@@ -9,10 +11,12 @@ public class MeshValidator
 
     public ValidationResult Validate(Mesh mesh)
     {
-        var issues = new List<ValidationIssue>();
-        var componentTopology = MeshTopologyAnalyzer.Analyze(mesh);
-        var triangleIndices = new Dictionary<TriangleKey, int>();
-        var edgeMap = new Dictionary<EdgeKey, List<EdgeUse>>();
+        var issues = new ValidationIssueCollector();
+        var components = new MeshTopologyAnalyzer.ComponentTracker(mesh.Triangles.Count);
+        var geometry = new MeshGeometryAccumulator();
+        var highlights = new MeshIssueHighlightBuilder();
+        var triangleIndices = new Dictionary<TriangleKey, int>(mesh.Triangles.Count);
+        var edgeMap = new Dictionary<EdgeKey, EdgeUses>(checked(mesh.Triangles.Count * 3 / 2));
 
         if (mesh.Triangles.Count == 0)
         {
@@ -24,29 +28,33 @@ public class MeshValidator
         for (var i = 0; i < mesh.Triangles.Count; i++)
         {
             var triangle = mesh.Triangles[i];
+            components.Add(triangle, i);
+            geometry.Include(triangle);
 
             if (!HasValidCoordinates(triangle))
             {
-                issues.Add(new ValidationIssue(
-                    ValidationIssueCodes.InvalidCoordinates,
-                    $"Triangle {i} contains invalid coordinates."));
+                issues.Add(ValidationIssueCodes.InvalidCoordinates,
+                    issues.WantsExample(ValidationIssueCodes.InvalidCoordinates)
+                        ? $"Triangle {i} contains invalid coordinates." : null);
                 continue;
             }
 
             if (IsDegenerate(triangle))
             {
-                issues.Add(new ValidationIssue(
-                    ValidationIssueCodes.DegenerateTriangle,
-                    $"Triangle {i} is degenerate."));
+                issues.Add(ValidationIssueCodes.DegenerateTriangle,
+                    issues.WantsExample(ValidationIssueCodes.DegenerateTriangle)
+                        ? $"Triangle {i} is degenerate." : null);
+                highlights.Add(ValidationIssueCodes.DegenerateTriangle, triangle.A, triangle.B, triangle.C);
                 continue;
             }
 
             var triangleKey = TriangleKey.Create(triangle);
             if (triangleIndices.TryGetValue(triangleKey, out var originalIndex))
             {
-                issues.Add(new ValidationIssue(
-                    ValidationIssueCodes.DuplicateTriangle,
-                    $"Triangle {i} duplicates triangle {originalIndex}."));
+                issues.Add(ValidationIssueCodes.DuplicateTriangle,
+                    issues.WantsExample(ValidationIssueCodes.DuplicateTriangle)
+                        ? $"Triangle {i} duplicates triangle {originalIndex}." : null);
+                highlights.Add(ValidationIssueCodes.DuplicateTriangle, triangle.A, triangle.B, triangle.C);
             }
             else
             {
@@ -58,10 +66,10 @@ public class MeshValidator
             AddEdge(edgeMap, triangle.C, triangle.A, i);
         }
 
-        var edgeValidation = ValidateEdges(edgeMap, issues);
+        var edgeValidation = ValidateEdges(edgeMap, issues, highlights);
         var topology = new MeshTopology
         {
-            ConnectedComponentCount = componentTopology.ConnectedComponentCount,
+            ConnectedComponentCount = components.Count,
             OpenEdgeCount = edgeValidation.OpenEdgeCount,
             NonManifoldEdgeCount = edgeValidation.NonManifoldEdgeCount,
             HasInconsistentOrientation = edgeValidation.HasInconsistentOrientation
@@ -79,8 +87,10 @@ public class MeshValidator
 
         return new ValidationResult
         {
-            Issues = issues,
-            Topology = topology
+            Issues = issues.Build(),
+            Topology = topology,
+            IssueAnalysis = highlights.Build(),
+            Geometry = geometry.Measurements
         };
     }
 
@@ -124,27 +134,22 @@ public class MeshValidator
     }
 
     private static void AddEdge(
-        Dictionary<EdgeKey, List<EdgeUse>> edgeMap,
+        Dictionary<EdgeKey, EdgeUses> edgeMap,
         Vector3 start,
         Vector3 end,
         int triangleIndex)
     {
         var comparison = CompareVertices(start, end);
         var key = comparison < 0 ? new EdgeKey(start, end) : new EdgeKey(end, start);
-        var use = new EdgeUse(triangleIndex, comparison < 0);
-
-        if (!edgeMap.TryGetValue(key, out var uses))
-        {
-            uses = [];
-            edgeMap.Add(key, uses);
-        }
-
-        uses.Add(use);
+        // The common manifold case needs no per-edge object or list.
+        ref var uses = ref CollectionsMarshal.GetValueRefOrAddDefault(edgeMap, key, out _);
+        uses.Add(triangleIndex, comparison < 0);
     }
 
     private static EdgeValidationSummary ValidateEdges(
-        Dictionary<EdgeKey, List<EdgeUse>> edgeMap,
-        List<ValidationIssue> issues)
+        Dictionary<EdgeKey, EdgeUses> edgeMap,
+        ValidationIssueCollector issues,
+        MeshIssueHighlightBuilder highlights)
     {
         var openEdgeCount = 0;
         var nonManifoldEdgeCount = 0;
@@ -154,25 +159,27 @@ public class MeshValidator
             if (uses.Count == 1)
             {
                 openEdgeCount++;
-                issues.Add(new ValidationIssue(
-                    ValidationIssueCodes.OpenEdge,
-                    $"Open edge {FormatEdge(edge)} is used only by triangle {uses[0].TriangleIndex}."));
+                issues.Add(ValidationIssueCodes.OpenEdge,
+                    issues.WantsExample(ValidationIssueCodes.OpenEdge)
+                        ? $"Open edge {FormatEdge(edge)} is used only by triangle {uses.FirstIndex}." : null);
+                highlights.AddOpenEdge(edge.Start, edge.End);
             }
             else if (uses.Count > 2)
             {
                 nonManifoldEdgeCount++;
-                var triangleList = string.Join(", ", uses.Select(use => use.TriangleIndex));
-                issues.Add(new ValidationIssue(
-                    ValidationIssueCodes.NonManifoldEdge,
-                    $"Non-manifold edge {FormatEdge(edge)} is used by {uses.Count} triangles: {triangleList}."));
+                issues.Add(ValidationIssueCodes.NonManifoldEdge,
+                    issues.WantsExample(ValidationIssueCodes.NonManifoldEdge)
+                        ? $"Non-manifold edge {FormatEdge(edge)} is used by {uses.Count} triangles: {uses.FormatTriangleExamples()}." : null);
+                highlights.AddNonManifoldEdge(edge.Start, edge.End);
             }
-            else if (uses[0].IsCanonicalDirection == uses[1].IsCanonicalDirection)
+            else if (uses.FirstDirection == uses.SecondDirection)
             {
                 hasInconsistentOrientation = true;
-                issues.Add(new ValidationIssue(
-                    ValidationIssueCodes.InconsistentOrientation,
-                    $"Triangles {uses[0].TriangleIndex} and {uses[1].TriangleIndex} have inconsistent " +
-                    $"orientation along edge {FormatEdge(edge)}."));
+                issues.Add(ValidationIssueCodes.InconsistentOrientation,
+                    issues.WantsExample(ValidationIssueCodes.InconsistentOrientation)
+                        ? $"Triangles {uses.FirstIndex} and {uses.SecondIndex} have inconsistent " +
+                          $"orientation along edge {FormatEdge(edge)}." : null);
+                highlights.Add(ValidationIssueCodes.InconsistentOrientation, edge.Start, edge.End);
             }
         }
 
@@ -206,7 +213,41 @@ public class MeshValidator
 
     private readonly record struct EdgeKey(Vector3 Start, Vector3 End);
 
-    private readonly record struct EdgeUse(int TriangleIndex, bool IsCanonicalDirection);
+    private struct EdgeUses
+    {
+        public int Count;
+        public int FirstIndex;
+        public int SecondIndex;
+        public int ThirdIndex;
+        public bool FirstDirection;
+        public bool SecondDirection;
+
+        public void Add(int index, bool direction)
+        {
+            Count++;
+            if (Count == 1)
+            {
+                FirstIndex = index;
+                FirstDirection = direction;
+            }
+            else if (Count == 2)
+            {
+                SecondIndex = index;
+                SecondDirection = direction;
+            }
+            else if (Count == 3)
+            {
+                ThirdIndex = index;
+            }
+        }
+
+        public readonly string FormatTriangleExamples()
+        {
+            return Count == 3
+                ? $"{FirstIndex}, {SecondIndex}, {ThirdIndex}"
+                : $"{FirstIndex}, {SecondIndex}, {ThirdIndex}, ...";
+        }
+    }
 
     private readonly record struct EdgeValidationSummary(
         int OpenEdgeCount,
@@ -217,9 +258,22 @@ public class MeshValidator
     {
         public static TriangleKey Create(Triangle triangle)
         {
-            var vertices = new[] { triangle.A, triangle.B, triangle.C };
-            Array.Sort(vertices, CompareVertices);
-            return new TriangleKey(vertices[0], vertices[1], vertices[2]);
+            var first = triangle.A;
+            var second = triangle.B;
+            var third = triangle.C;
+            if (CompareVertices(first, second) > 0)
+            {
+                (first, second) = (second, first);
+            }
+            if (CompareVertices(second, third) > 0)
+            {
+                (second, third) = (third, second);
+            }
+            if (CompareVertices(first, second) > 0)
+            {
+                (first, second) = (second, first);
+            }
+            return new TriangleKey(first, second, third);
         }
     }
 }

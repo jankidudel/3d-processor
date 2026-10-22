@@ -98,10 +98,12 @@ public sealed class StlSplitter
         List<Vector3> vertices,
         double tolerance)
     {
-        var existing = vertices.FirstOrDefault(vertex => Near(vertex, value, tolerance));
-        if (existing is not null)
+        foreach (var existing in vertices)
         {
-            return existing;
+            if (Near(existing, value, tolerance))
+            {
+                return existing;
+            }
         }
         vertices.Add(value);
         return value;

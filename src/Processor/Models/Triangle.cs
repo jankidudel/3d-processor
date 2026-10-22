@@ -1,6 +1,6 @@
 namespace Processor.Models;
 
-public record Triangle(
+public readonly record struct Triangle(
   Vector3 Normal,
   Vector3 A,
   Vector3 B,
