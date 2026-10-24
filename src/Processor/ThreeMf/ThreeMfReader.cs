@@ -195,7 +195,9 @@ public sealed class ThreeMfReader
             {
                 throw new ThreeMfFormatException("This 3MF file contains an invalid transform.");
             }
-            var result = new Transform(values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8], values[9], values[10], values[11]);
+            // 3MF serializes a row-vector 4x3 matrix: the final three values
+            // are translation. Transpose into this column-vector 3x4 form.
+            var result = new Transform(values[0], values[3], values[6], values[9], values[1], values[4], values[7], values[10], values[2], values[5], values[8], values[11]);
             var determinant = result.Determinant;
             if (!float.IsFinite(determinant) || Math.Abs(determinant) < 1e-12f)
             {

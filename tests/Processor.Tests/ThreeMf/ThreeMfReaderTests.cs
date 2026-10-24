@@ -8,6 +8,30 @@ namespace Processor.Tests.ThreeMf;
 public sealed class ThreeMfReaderTests
 {
     [Fact]
+    public void Read_ComposesStandardComponentTranslationWithBuildRotation()
+    {
+        var path = CreatePackage("""
+            <model xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"><resources>
+              <object id="1"><mesh><vertices><vertex x="1" y="2" z="3"/><vertex x="2" y="2" z="3"/><vertex x="1" y="3" z="3"/></vertices><triangles><triangle v1="0" v2="1" v3="2"/></triangles></mesh></object>
+              <object id="2"><components><component objectid="1" transform="1 0 0 0 1 0 0 0 1 4 0 0"/></components></object>
+            </resources><build><item objectid="2" transform="0 1 0 -1 0 0 0 0 1 10 20 30"/></build></model>
+            """);
+        try
+        {
+            var triangle = Assert.Single(new ThreeMfReader().Read(path).Mesh.Triangles);
+            // (1,2,3) -> component (5,2,3) -> 90-degree Z rotation
+            // (-2,5,3) -> build translation (8,25,33).
+            Assert.Equal(new Vector3(8, 25, 33), triangle.A);
+            Assert.Equal(new Vector3(8, 26, 33), triangle.B);
+            Assert.Equal(new Vector3(7, 25, 33), triangle.C);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void Read_ResolvesRootRelationshipAndBuildTransform()
     {
         var path = CreatePackage("""
@@ -15,7 +39,7 @@ public sealed class ThreeMfReaderTests
               <resources><object id="1" type="model"><mesh><vertices>
                 <vertex x="0" y="0" z="0"/><vertex x="1" y="0" z="0"/><vertex x="0" y="1" z="0"/>
               </vertices><triangles><triangle v1="0" v2="1" v3="2"/></triangles></mesh></object></resources>
-              <build><item objectid="1" transform="1 0 0 10 0 1 0 0 0 0 1 0"/></build>
+              <build><item objectid="1" transform="1 0 0 0 1 0 0 0 1 10 0 0"/></build>
             </model>
             """);
         try
@@ -175,8 +199,8 @@ public sealed class ThreeMfReaderTests
         var path = CreatePackage("""
             <model xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"><resources>
               <object id="1"><mesh><vertices><vertex x="0" y="0" z="0"/><vertex x="1" y="0" z="0"/><vertex x="0" y="1" z="0"/></vertices><triangles><triangle v1="0" v2="1" v3="2"/></triangles></mesh></object>
-              <object id="2"><components><component objectid="1" transform="1 0 0 2 0 1 0 0 0 0 1 0"/></components></object>
-            </resources><build><item objectid="2" transform="1 0 0 3 0 1 0 0 0 0 1 0"/></build></model>
+              <object id="2"><components><component objectid="1" transform="1 0 0 0 1 0 0 0 1 2 0 0"/></components></object>
+            </resources><build><item objectid="2" transform="1 0 0 0 1 0 0 0 1 3 0 0"/></build></model>
             """);
         try
         {
@@ -265,8 +289,8 @@ public sealed class ThreeMfReaderTests
             <model xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"><resources>
               <object id="1"><mesh><vertices><vertex x="0" y="0" z="0"/><vertex x="1" y="0" z="0"/><vertex x="0" y="1" z="0"/></vertices><triangles><triangle v1="0" v2="1" v3="2"/></triangles></mesh></object>
             </resources><build>
-              <item objectid="1" transform="1 0 0 10 0 1 0 0 0 0 1 0"/>
-              <item objectid="1" transform="0 -1 0 0 1 0 0 20 0 0 1 0"/>
+              <item objectid="1" transform="1 0 0 0 1 0 0 0 1 10 0 0"/>
+              <item objectid="1" transform="0 1 0 -1 0 0 0 0 1 0 20 0"/>
             </build></model>
             """);
         try

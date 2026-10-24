@@ -69,6 +69,23 @@ execution harness.
 
 ## Run the tests
 
+The same console entry point accepts supported mesh-based `.3mf` packages. It
+resolves component/build placements using the 3MF row-vector 4x3 matrix order,
+retains source units in its measurements, and validates build items independently.
+See the [3MF Core specification, section 3.3](https://github.com/3MFConsortium/spec_core/blob/master/3MF%20Core%20Specification.md).
+This is not a complete standards, extension or slicer-project validator.
+
+Reproduce the public quality/cleanup evidence from this repository:
+
+```sh
+dotnet run --project tools/RecoveryEvidence -- ../3d-frontend/public/examples
+```
+
+The runner checks the actual one-item/repeated-item 3MF bounds and counts,
+retains defective-resource reports, cleans the owned duplicate-face STL and
+reopens its saved output. Its controls are software evidence, separate from the
+full test suite, production deployment and physical-print acceptance.
+
 The solution file is the test entry point; production `Program.Main` does not need to reference test code.
 
 ```sh
