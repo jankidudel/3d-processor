@@ -52,7 +52,8 @@ jobs:
 
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 10.0.x
+          # Pin a published SDK; the channel alias selected an unavailable archive.
+          dotnet-version: 10.0.402
 
       - run: dotnet test 3d-processor.slnx --nologo
       - name: Install Lambda packaging tool
