@@ -2,32 +2,34 @@ name: deploy-processor
 
 on:
   workflow_dispatch:
-    inputs:
-      environment:
-        description: GitHub Environment and AWS stage to deploy
-        required: true
-        default: dev
-        type: choice
-        options:
-          - dev
-          - prod
+    # Hosted development is disabled. For future re-enablement, restore this
+    # selector and wire job environment, STAGE and concurrency to its value.
+    # inputs:
+    #   environment:
+    #     description: GitHub Environment and AWS stage to deploy
+    #     required: true
+    #     default: prod
+    #     type: choice
+    #     options:
+    #       - prod
+    #       - dev
 
 permissions:
   contents: read
   id-token: write
 
 concurrency:
-  group: deploy-processor-${{ inputs.environment }}
+  group: deploy-processor-prod
   cancel-in-progress: false
 
 jobs:
   deploy:
-    name: Deploy processor to ${{ inputs.environment }}
+    name: Deploy processor to prod
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: prod
     env:
       AWS_REGION: us-east-1
-      STAGE: ${{ inputs.environment }}
+      STAGE: prod
       AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
     steps:
