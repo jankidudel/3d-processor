@@ -26,6 +26,7 @@ jobs:
   deploy:
     name: Deploy processor to prod
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment: prod
     env:
       AWS_REGION: us-east-1
@@ -33,6 +34,11 @@ jobs:
       AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
     steps:
+      - name: Report runner startup
+        run: |
+          echo "Deployment runner started at $(date -u +%FT%TZ) for $GITHUB_SHA."
+          echo "Runner: $RUNNER_OS / $RUNNER_ARCH. Checks run before any Lambda update."
+
       - uses: actions/checkout@v6
 
       - name: Verify AWS deployment configuration
